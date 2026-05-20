@@ -1,3 +1,5 @@
+// db.ts — AppDB Dexie class. Holds all schema versions; version history is never deleted.
+
 import Dexie, { type Table } from 'dexie'
 import type { LessonRow, CardRow, ReviewRow, SourceRow, SettingsRow } from '@/lib/types'
 

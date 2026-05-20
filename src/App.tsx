@@ -1,3 +1,5 @@
+// App.tsx — app shell: HashRouter, all routes, and startup scope load.
+
 import { useEffect } from 'react'
 import { HashRouter, Routes, Route } from 'react-router-dom'
 import { Nav } from '@/components/Nav'

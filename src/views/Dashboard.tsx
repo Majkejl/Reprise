@@ -1,30 +1,33 @@
+// Dashboard.tsx — landing view showing due card count and session quick-start.
+// Source health indicators are a stub until Phase 3.
+
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CardsRepo, SourcesRepo } from '@/db'
-import { getDueCards } from '@/services/fsrsService'
-import { useErrorStore } from '@/stores/uiStore'
+import { getDueCardCount, getSourceCount } from '@/services/sessionService'
+import { useErrorStore, useUIStore } from '@/stores/uiStore'
 
 export function Dashboard() {
   const navigate = useNavigate()
-  const showError = useErrorStore(s => s.show)
+  const showError = useErrorStore(state => state.show)
+  const scope = useUIStore(state => state.scope)
   const [dueCount, setDueCount] = useState<number | null>(null)
   const [sourceCount, setSourceCount] = useState<number | null>(null)
 
   useEffect(() => {
     async function load() {
       try {
-        const [allCards, sources] = await Promise.all([
-          CardsRepo.getDueBefore(Date.now()),
-          SourcesRepo.getAll(),
+        const [due, sources] = await Promise.all([
+          getDueCardCount(scope),
+          getSourceCount(),
         ])
-        setDueCount(getDueCards(allCards).length)
-        setSourceCount(sources.length)
+        setDueCount(due)
+        setSourceCount(sources)
       } catch (e) {
         showError(String(e))
       }
     }
     void load()
-  }, [showError])
+  }, [scope, showError])
 
   return (
     <div className="flex flex-col gap-8 px-4 py-8 max-w-lg mx-auto">

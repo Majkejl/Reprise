@@ -1,3 +1,5 @@
+// Nav.tsx — top navigation bar with active-route highlighting.
+
 import { NavLink } from 'react-router-dom'
 
 const links = [

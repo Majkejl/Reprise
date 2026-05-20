@@ -1,3 +1,5 @@
+// uiStore.ts — UI & Scope Store (scope, sync status, modal state) and global error store.
+
 import { create } from 'zustand'
 import type { Scope } from '@/lib/types'
 import { DEFAULT_SCOPE } from '@/lib/types'
@@ -33,7 +35,7 @@ export const useUIStore = create<UIState>(set => ({
   },
 
   setSyncStatus(sourceId, status) {
-    set(s => ({ syncStatus: { ...s.syncStatus, [sourceId]: status } }))
+    set(state => ({ syncStatus: { ...state.syncStatus, [sourceId]: status } }))
   },
 
   openModal(id) {

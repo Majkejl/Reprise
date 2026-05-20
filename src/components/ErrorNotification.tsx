@@ -1,3 +1,5 @@
+// ErrorNotification.tsx — global error popup. All app errors surface here; never use alert() or local error state for global errors.
+
 import { useErrorStore } from '@/stores/uiStore'
 
 export function ErrorNotification() {

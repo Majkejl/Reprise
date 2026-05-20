@@ -1,4 +1,7 @@
-import { useState } from 'react'
+// LessonEngine.tsx — isolated card renderer. No knowledge of FSRS, sessions, or the DB.
+// Receives one card + lesson context; fires onComplete when the user submits a self-rating.
+
+import React, { useState } from 'react'
 import type { LessonCard, LessonContext, MultipleChoiceCard, FillInBlankCard, FreeTextCard } from '@/lib/types'
 
 interface LessonEngineProps {
@@ -17,14 +20,14 @@ const RATINGS: Array<{ value: 1 | 2 | 3 | 4; label: string; sub: string; color: 
 function RatingButtons({ onRate }: { onRate: (r: 1 | 2 | 3 | 4) => void }) {
   return (
     <div className="flex gap-3 justify-center flex-wrap">
-      {RATINGS.map(r => (
+      {RATINGS.map(ratingOption => (
         <button
-          key={r.value}
-          onClick={() => onRate(r.value)}
-          className={`flex flex-col items-center rounded border px-4 py-2 text-sm transition-colors ${r.color}`}
+          key={ratingOption.value}
+          onClick={() => onRate(ratingOption.value)}
+          className={`flex flex-col items-center rounded border px-4 py-2 text-sm transition-colors ${ratingOption.color}`}
         >
-          <span className="font-medium">{r.label}</span>
-          <span className="text-xs opacity-60">{r.sub}</span>
+          <span className="font-medium">{ratingOption.label}</span>
+          <span className="text-xs opacity-60">{ratingOption.sub}</span>
         </button>
       ))}
     </div>
@@ -41,10 +44,10 @@ function MultipleChoiceRenderer({
   onComplete: (r: { rating: 1 | 2 | 3 | 4 }) => void
 }) {
   const [selected, setSelected] = useState<number | null>(null)
-  const revealed = selected !== null
+  const isRevealed = selected !== null
 
   function handleSelect(idx: number) {
-    if (revealed) return
+    if (isRevealed) return
     setSelected(idx)
   }
 
@@ -52,9 +55,9 @@ function MultipleChoiceRenderer({
     <div className="flex flex-col gap-6">
       <p className="text-zinc-100 text-base leading-relaxed">{card.question}</p>
       <ul className="flex flex-col gap-2">
-        {card.options.map((opt, idx) => {
+        {card.options.map((option, idx) => {
           let style = 'border-zinc-700 text-zinc-300 hover:border-zinc-500'
-          if (revealed) {
+          if (isRevealed) {
             if (idx === card.correctIndex) style = 'border-emerald-600 text-emerald-300 bg-emerald-950/40'
             else if (idx === selected) style = 'border-red-700 text-red-300 bg-red-950/40'
             else style = 'border-zinc-800 text-zinc-600'
@@ -65,18 +68,18 @@ function MultipleChoiceRenderer({
                 onClick={() => handleSelect(idx)}
                 className={`w-full rounded border px-4 py-2 text-left text-sm transition-colors ${style}`}
               >
-                {opt}
+                {option}
               </button>
             </li>
           )
         })}
       </ul>
-      {revealed && (
+      {isRevealed && (
         <>
           {card.explanation && (
             <p className="text-sm text-zinc-400 border-l-2 border-zinc-700 pl-3">{card.explanation}</p>
           )}
-          <RatingButtons onRate={r => onComplete({ rating: r })} />
+          <RatingButtons onRate={rating => onComplete({ rating })} />
         </>
       )}
     </div>
@@ -93,25 +96,25 @@ function FillInBlankRenderer({
   onComplete: (r: { rating: 1 | 2 | 3 | 4 }) => void
 }) {
   const [answer, setAnswer] = useState('')
-  const [revealed, setReveal] = useState(false)
+  const [isRevealed, setIsRevealed] = useState(false)
 
   const parts = card.prompt.split('___')
 
-  function reveal(e: React.FormEvent) {
+  function handleReveal(e: React.FormEvent) {
     e.preventDefault()
-    setReveal(true)
+    setIsRevealed(true)
   }
 
-  const normalise = (s: string) => s.trim().toLowerCase()
+  const normalise = (text: string) => text.trim().toLowerCase()
   const isCorrect =
-    revealed &&
-    card.acceptedAnswers.some(a => normalise(a) === normalise(answer))
+    isRevealed &&
+    card.acceptedAnswers.some(accepted => normalise(accepted) === normalise(answer))
 
   return (
     <div className="flex flex-col gap-6">
       <p className="text-zinc-100 text-base leading-relaxed">
         {parts[0]}
-        {!revealed ? (
+        {!isRevealed ? (
           <span className="inline-block border-b border-zinc-500 min-w-24 mx-1" />
         ) : (
           <span className={`mx-1 font-medium ${isCorrect ? 'text-emerald-400' : 'text-red-400'}`}>
@@ -120,8 +123,8 @@ function FillInBlankRenderer({
         )}
         {parts[1]}
       </p>
-      {!revealed ? (
-        <form onSubmit={reveal} className="flex gap-3">
+      {!isRevealed ? (
+        <form onSubmit={handleReveal} className="flex gap-3">
           <input
             autoFocus
             value={answer}
@@ -146,7 +149,7 @@ function FillInBlankRenderer({
           {card.explanation && (
             <p className="text-sm text-zinc-400 border-l-2 border-zinc-700 pl-3">{card.explanation}</p>
           )}
-          <RatingButtons onRate={r => onComplete({ rating: r })} />
+          <RatingButtons onRate={rating => onComplete({ rating })} />
         </>
       )}
     </div>
@@ -162,14 +165,14 @@ function FreeTextRenderer({
   card: FreeTextCard
   onComplete: (r: { rating: 1 | 2 | 3 | 4 }) => void
 }) {
-  const [revealed, setReveal] = useState(false)
+  const [isRevealed, setIsRevealed] = useState(false)
 
   return (
     <div className="flex flex-col gap-6">
       <p className="text-zinc-100 text-base leading-relaxed">{card.question}</p>
-      {!revealed ? (
+      {!isRevealed ? (
         <button
-          onClick={() => setReveal(true)}
+          onClick={() => setIsRevealed(true)}
           className="self-start rounded border border-zinc-600 px-4 py-2 text-sm text-zinc-300 hover:border-zinc-400"
         >
           Show answer
@@ -181,7 +184,7 @@ function FreeTextRenderer({
               {card.explanation}
             </p>
           )}
-          <RatingButtons onRate={r => onComplete({ rating: r })} />
+          <RatingButtons onRate={rating => onComplete({ rating })} />
         </>
       )}
     </div>
@@ -191,12 +194,13 @@ function FreeTextRenderer({
 // ─── Engine ───────────────────────────────────────────────────────────────────
 
 export function LessonEngine({ card, context, onComplete }: LessonEngineProps) {
+  // DEFERRED (Phase 4): custom component bundle resolution — always falls back to the default renderer
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap gap-2 text-xs text-zinc-600">
         <span>{context.title}</span>
-        {context.tags.map(t => (
-          <span key={t} className="rounded bg-zinc-800 px-2 py-0.5">#{t}</span>
+        {context.tags.map(tag => (
+          <span key={tag} className="rounded bg-zinc-800 px-2 py-0.5">#{tag}</span>
         ))}
       </div>
       <div className="rounded border border-zinc-800 bg-zinc-900 p-6">

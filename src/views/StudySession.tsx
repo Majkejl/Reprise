@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'react'
+// StudySession.tsx — hosts the active card loop; drives LessonEngine through the session queue.
+
+import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { LessonEngine } from '@/components/LessonEngine'
 import { startSession, getCardAndContext, completeCard } from '@/services/sessionService'
@@ -8,22 +10,22 @@ import {
   selectProgress,
   selectIsSessionComplete,
 } from '@/stores/sessionStore'
-import { useUIStore } from '@/stores/uiStore'
+import { useUIStore, useErrorStore } from '@/stores/uiStore'
 import type { LessonCard, LessonContext, CardRow, SessionSummary } from '@/lib/types'
 
 export function StudySession() {
   const navigate = useNavigate()
-  const scope = useUIStore(s => s.scope)
+  const scope = useUIStore(state => state.scope)
+  const showError = useErrorStore(state => state.show)
 
-
-  const sessionStart = useSessionStore(s => s.startSession)
-  const advanceQueue = useSessionStore(s => s.advanceQueue)
-  const endSession = useSessionStore(s => s.endSession)
-  const clearSession = useSessionStore(s => s.clearSession)
+  const sessionStart = useSessionStore(state => state.startSession)
+  const advanceQueue = useSessionStore(state => state.advanceQueue)
+  const endSession = useSessionStore(state => state.endSession)
+  const clearSession = useSessionStore(state => state.clearSession)
   const currentItem = useSessionStore(selectCurrentQueueItem)
   const progress = useSessionStore(selectProgress)
   const isComplete = useSessionStore(selectIsSessionComplete)
-  const summary = useSessionStore(s => s.summary)
+  const summary = useSessionStore(state => state.summary)
 
   const [loading, setLoading] = useState(true)
   const [cardData, setCardData] = useState<{
@@ -32,34 +34,42 @@ export function StudySession() {
     context: LessonContext
   } | null>(null)
 
-  // Start session on mount
   useEffect(() => {
     async function init() {
-      setLoading(true)
-      const queue = await startSession(scope)
-      sessionStart(queue)
-      setLoading(false)
+      try {
+        setLoading(true)
+        const queue = await startSession(scope)
+        sessionStart(queue)
+      } catch (e) {
+        showError(String(e))
+      } finally {
+        setLoading(false)
+      }
     }
     void init()
     return () => clearSession()
+  // Intentional empty dep array: session forms once on mount; scope changes take effect at next session start.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Load card data whenever currentItem changes
   useEffect(() => {
     if (!currentItem) { setCardData(null); return }
-    let cancelled = false
+    let isCancelled = false
     async function load() {
-      const data = await getCardAndContext(currentItem!)
-      if (!cancelled) setCardData(data)
+      try {
+        const data = await getCardAndContext(currentItem!)
+        if (!isCancelled) setCardData(data)
+      } catch (e) {
+        if (!isCancelled) showError(String(e))
+      }
     }
     void load()
-    return () => { cancelled = true }
-  }, [currentItem])
+    return () => { isCancelled = true }
+  }, [currentItem, showError])
 
   function handleComplete(result: { rating: 1 | 2 | 3 | 4 }) {
     if (!currentItem || !cardData) return
-    void completeCard(currentItem, cardData.cardRow, result.rating)
+    completeCard(currentItem, cardData.cardRow, result.rating).catch(e => showError(String(e)))
     advanceQueue(result.rating)
   }
 

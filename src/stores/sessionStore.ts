@@ -1,3 +1,5 @@
+// sessionStore.ts — ephemeral session queue and summary. Never persisted; cleared on session end.
+
 import { create } from 'zustand'
 import type { QueueItem, SessionSummary } from '@/lib/types'
 
@@ -36,12 +38,12 @@ export const useSessionStore = create<SessionState>((set) => {
 
     advanceQueue(rating) {
       ratingLog.push(rating)
-      set(s => ({ currentIndex: s.currentIndex + 1 }))
+      set(state => ({ currentIndex: state.currentIndex + 1 }))
     },
 
     endSession() {
       const counts = emptyRatings()
-      for (const r of ratingLog) counts[r]++
+      for (const rating of ratingLog) counts[rating]++
       const summary = buildSummary(counts)
       set({ isActive: false, summary })
       return summary
@@ -54,13 +56,13 @@ export const useSessionStore = create<SessionState>((set) => {
   }
 })
 
-export const selectCurrentQueueItem = (s: SessionState): QueueItem | null =>
-  s.queue[s.currentIndex] ?? null
+export const selectCurrentQueueItem = (state: SessionState): QueueItem | null =>
+  state.queue[state.currentIndex] ?? null
 
-export const selectProgress = (s: SessionState) => ({
-  current: Math.min(s.currentIndex, s.queue.length),
-  total: s.queue.length,
+export const selectProgress = (state: SessionState) => ({
+  current: Math.min(state.currentIndex, state.queue.length),
+  total: state.queue.length,
 })
 
-export const selectIsSessionComplete = (s: SessionState): boolean =>
-  s.isActive && s.currentIndex >= s.queue.length
+export const selectIsSessionComplete = (state: SessionState): boolean =>
+  state.isActive && state.currentIndex >= state.queue.length

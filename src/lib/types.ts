@@ -1,3 +1,5 @@
+// types.ts — all shared types and constants. Single source of truth; do not redefine elsewhere.
+
 export type { Card as FSRSCard, State as FSRSState, Rating as FSRSRating } from 'ts-fsrs'
 
 // ─── Question types ───────────────────────────────────────────────────────────

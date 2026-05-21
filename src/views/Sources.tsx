@@ -157,9 +157,13 @@ function SourceListItem({ source, status, isOfficial, onSync, onRemove }: Source
       <div className="flex flex-col gap-0.5 min-w-0">
         <div className="flex items-center gap-2">
           <span className="text-sm text-zinc-200 truncate">{source.label}</span>
-          {isOfficial && (
+          {isOfficial ? (
             <span className="text-[10px] px-1.5 py-0.5 rounded bg-sky-950 text-sky-400 border border-sky-900 shrink-0">
               official
+            </span>
+          ) : (
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-500 border border-zinc-700 shrink-0">
+              user
             </span>
           )}
           <SyncStatusBadge status={status} />

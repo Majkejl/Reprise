@@ -1,6 +1,7 @@
 // LessonEngine.tsx — isolated card renderer. No knowledge of FSRS, sessions, or the DB.
 // Receives one card + lesson context; fires onComplete when the user submits a self-rating.
 // Dynamically loads custom renderer bundles if the lesson declares one (D1).
+// Third-party (untrusted) bundles run in a sandboxed iframe; official-source bundles run directly (D4).
 
 import React, { useState, useEffect, useRef } from 'react'
 import type { LessonCard, LessonContext, MultipleChoiceCard, FillInBlankCard, FreeTextCard } from '@/lib/types'
@@ -18,6 +19,12 @@ interface LessonEngineProps {
   context: LessonContext
   /** Absolute URL to a pre-cached ES module exporting a default React component (D1). */
   componentBundleUrl?: string
+  /**
+   * Whether the card's source is trusted (e.g. the official source). Trusted bundles are
+   * imported directly; untrusted bundles run in a sandboxed iframe (D4).
+   * Defaults to true for backward compatibility.
+   */
+  isTrustedSource?: boolean
   onComplete: (result: { rating: 1 | 2 | 3 | 4 }) => void
 }
 
@@ -202,7 +209,23 @@ function FreeTextRenderer({
   )
 }
 
-// ─── Custom bundle loader ─────────────────────────────────────────────────────
+// ─── Default card content ─────────────────────────────────────────────────────
+
+/** Renders the built-in card type renderers. Used as the fallback for both trusted and sandboxed paths. */
+function DefaultCardContent({
+  card,
+  onComplete,
+}: {
+  card: LessonCard
+  onComplete: (r: { rating: 1 | 2 | 3 | 4 }) => void
+}) {
+  if (card.type === 'multiple-choice') return <MultipleChoiceRenderer card={card} onComplete={onComplete} />
+  if (card.type === 'fill-in-blank') return <FillInBlankRenderer card={card} onComplete={onComplete} />
+  if (card.type === 'free-text') return <FreeTextRenderer card={card} onComplete={onComplete} />
+  return null
+}
+
+// ─── Custom bundle loader (trusted / official source) ─────────────────────────
 
 /**
  * Loads a custom renderer from the bundle cache (populated by Source Manager during sync).
@@ -230,7 +253,6 @@ function useCustomRenderer(componentBundleUrl: string | undefined): {
         const cache = await caches.open(BUNDLE_CACHE_NAME)
         const cachedResponse = await cache.match(componentBundleUrl!)
         if (!cachedResponse || cancelled) {
-          // Cache miss — bundle wasn't pre-fetched during sync; use default renderer
           if (!cancelled) setIsLoadingBundle(false)
           return
         }
@@ -271,10 +293,146 @@ function useCustomRenderer(componentBundleUrl: string | undefined): {
   return { CustomRenderer, isLoadingBundle }
 }
 
+// ─── Sandboxed bundle renderer (third-party sources) ─────────────────────────
+
+interface CompleteMessage {
+  type: 'reprise:complete'
+  rating: 1 | 2 | 3 | 4
+}
+
+function isCompleteMessage(data: unknown): data is CompleteMessage {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    (data as Record<string, unknown>).type === 'reprise:complete' &&
+    [1, 2, 3, 4].includes((data as Record<string, unknown>).rating as number)
+  )
+}
+
+/** Encodes a string to base64 via UTF-8, safe for non-ASCII characters in bundle code. */
+function toUtf8Base64(text: string): string {
+  const bytes = new TextEncoder().encode(text)
+  const binary = Array.from(bytes, b => String.fromCharCode(b)).join('')
+  return btoa(binary)
+}
+
+/**
+ * Builds an HTML document string for srcdoc-based sandboxed rendering.
+ * The bundle code is base64/UTF-8 encoded to safely embed it without </script> injection risk.
+ * Card and context JSON has < escaped to < for the same reason.
+ * The bundle is expected to read window.__repriseData__ and call window.__repriseComplete__(rating).
+ */
+function buildSandboxDocument(card: LessonCard, context: LessonContext, bundleCode: string): string {
+  const safeCard = JSON.stringify(card).replace(/</g, '\\u003c')
+  const safeContext = JSON.stringify(context).replace(/</g, '\\u003c')
+  const encodedBundle = toUtf8Base64(bundleCode)
+
+  // postMessage target is '*' because the sandboxed iframe has an opaque origin and cannot
+  // know the parent's origin — acceptable given sandbox="allow-scripts" containment (D4).
+  return (
+    '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">' +
+    '<script>' +
+    `window.__repriseData__={card:${safeCard},context:${safeContext}};` +
+    `window.__repriseComplete__=function(r){window.parent.postMessage({type:"reprise:complete",rating:r},"*");};` +
+    '(function(){' +
+    `var b=atob(${JSON.stringify(encodedBundle)});` +
+    'var a=new Uint8Array(b.length);' +
+    'for(var i=0;i<b.length;i++)a[i]=b.charCodeAt(i);' +
+    'var s=document.createElement("script");' +
+    's.textContent=new TextDecoder().decode(a);' +
+    'document.head.appendChild(s);' +
+    '}());' +
+    '<' + '/script>' +
+    '</head><body></body></html>'
+  )
+}
+
+function SandboxedBundleFrame({
+  componentBundleUrl,
+  card,
+  context,
+  onComplete,
+  fallback,
+}: {
+  componentBundleUrl: string
+  card: LessonCard
+  context: LessonContext
+  onComplete: (r: { rating: 1 | 2 | 3 | 4 }) => void
+  fallback: React.ReactNode
+}) {
+  const [srcdoc, setSrcdoc] = useState<string | null>(null)
+  const [isLoadingBundle, setIsLoadingBundle] = useState(true)
+  const [loadFailed, setLoadFailed] = useState(false)
+  const iframeRef = useRef<HTMLIFrameElement | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function buildDoc() {
+      try {
+        const cache = await caches.open(BUNDLE_CACHE_NAME)
+        const cachedResponse = await cache.match(componentBundleUrl)
+        if (!cachedResponse) {
+          if (!cancelled) { setLoadFailed(true); setIsLoadingBundle(false) }
+          return
+        }
+        const bundleCode = await cachedResponse.text()
+        if (cancelled) return
+        const doc = buildSandboxDocument(card, context, bundleCode)
+        if (!cancelled) { setSrcdoc(doc); setIsLoadingBundle(false) }
+      } catch {
+        if (!cancelled) { setLoadFailed(true); setIsLoadingBundle(false) }
+      }
+    }
+
+    void buildDoc()
+    return () => { cancelled = true }
+  }, [componentBundleUrl, card, context])
+
+  useEffect(() => {
+    function handleMessage(event: MessageEvent) {
+      // Only accept messages from this specific iframe to prevent spoofing
+      if (event.source !== iframeRef.current?.contentWindow) return
+      if (!isCompleteMessage(event.data)) return
+      onComplete({ rating: event.data.rating })
+    }
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [onComplete])
+
+  if (isLoadingBundle) {
+    return <p className="text-zinc-500 text-sm">Loading renderer…</p>
+  }
+
+  if (loadFailed || !srcdoc) {
+    return <>{fallback}</>
+  }
+
+  return (
+    <iframe
+      ref={iframeRef}
+      sandbox="allow-scripts"
+      srcDoc={srcdoc}
+      className="w-full border-0 block"
+      style={{ minHeight: '400px' }}
+      title="Custom card renderer (sandboxed)"
+    />
+  )
+}
+
 // ─── Engine ───────────────────────────────────────────────────────────────────
 
-export function LessonEngine({ card, context, componentBundleUrl, onComplete }: LessonEngineProps) {
-  const { CustomRenderer, isLoadingBundle } = useCustomRenderer(componentBundleUrl)
+export function LessonEngine({
+  card,
+  context,
+  componentBundleUrl,
+  isTrustedSource = true,
+  onComplete,
+}: LessonEngineProps) {
+  // Pass the bundle URL to useCustomRenderer only for trusted sources; undefined is a no-op.
+  const { CustomRenderer, isLoadingBundle } = useCustomRenderer(
+    isTrustedSource ? componentBundleUrl : undefined,
+  )
 
   const header = (
     <div className="flex flex-wrap gap-2 text-xs text-zinc-600">
@@ -284,6 +442,24 @@ export function LessonEngine({ card, context, componentBundleUrl, onComplete }: 
       ))}
     </div>
   )
+
+  // Untrusted source with a bundle — run it isolated in a sandboxed iframe (D4).
+  if (!isTrustedSource && componentBundleUrl) {
+    return (
+      <div className="flex flex-col gap-4">
+        {header}
+        <div className="rounded border border-zinc-800 bg-zinc-900 p-6">
+          <SandboxedBundleFrame
+            componentBundleUrl={componentBundleUrl}
+            card={card}
+            context={context}
+            onComplete={onComplete}
+            fallback={<DefaultCardContent card={card} onComplete={onComplete} />}
+          />
+        </div>
+      </div>
+    )
+  }
 
   if (isLoadingBundle) {
     return (
@@ -303,17 +479,7 @@ export function LessonEngine({ card, context, componentBundleUrl, onComplete }: 
         {CustomRenderer ? (
           <CustomRenderer card={card} context={context} onComplete={onComplete} />
         ) : (
-          <>
-            {card.type === 'multiple-choice' && (
-              <MultipleChoiceRenderer card={card} onComplete={onComplete} />
-            )}
-            {card.type === 'fill-in-blank' && (
-              <FillInBlankRenderer card={card} onComplete={onComplete} />
-            )}
-            {card.type === 'free-text' && (
-              <FreeTextRenderer card={card} onComplete={onComplete} />
-            )}
-          </>
+          <DefaultCardContent card={card} onComplete={onComplete} />
         )}
       </div>
     </div>

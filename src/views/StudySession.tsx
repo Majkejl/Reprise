@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { LessonEngine } from '@/components/LessonEngine'
 import { startSession, getCardAndContext, completeCard } from '@/services/sessionService'
+import { OFFICIAL_SOURCE_ID } from '@/services/sourceManager'
 import {
   useSessionStore,
   selectCurrentQueueItem,
@@ -133,6 +134,7 @@ export function StudySession() {
           card={cardData.card}
           context={cardData.context}
           componentBundleUrl={cardData.componentBundleUrl}
+          isTrustedSource={currentItem?.sourceId === OFFICIAL_SOURCE_ID}
           onComplete={handleComplete}
         />
       ) : (

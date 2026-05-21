@@ -133,8 +133,9 @@ export async function syncAll(onProgress?: SyncProgressCallback): Promise<void> 
 }
 
 /**
- * Registers a third-party lesson source by URL. Does not trigger an immediate sync.
- * Returns the derived sourceId. Throws if a source at that URL is already registered.
+ * Registers a third-party lesson source by URL. Validates the URL by fetching its index.json
+ * before saving (skipped if offline). Returns the derived sourceId.
+ * Throws if the URL is already registered or the index.json fetch fails.
  */
 export async function registerSource(url: string, label: string): Promise<string> {
   const normalizedUrl = url.endsWith('/') ? url : `${url}/`
@@ -150,6 +151,27 @@ export async function registerSource(url: string, label: string): Promise<string
 
   const existing = await SourcesRepo.get(sourceId)
   if (existing) throw new Error('A source at that URL is already registered')
+
+  if (navigator.onLine) {
+    let indexResponse: Response
+    try {
+      indexResponse = await fetch(`${normalizedUrl}index.json`)
+    } catch {
+      throw new Error('Could not reach that URL — check the address and try again')
+    }
+    if (!indexResponse.ok) {
+      throw new Error(`Source returned HTTP ${indexResponse.status} — check the URL`)
+    }
+    let indexData: unknown
+    try {
+      indexData = await (indexResponse.json() as Promise<unknown>)
+    } catch {
+      throw new Error('URL does not appear to be a valid Reprise lesson source')
+    }
+    if (!isSourceIndexJSON(indexData)) {
+      throw new Error('URL does not appear to be a valid Reprise lesson source')
+    }
+  }
 
   const resolvedLabel = label.trim() || extractHostname(normalizedUrl)
   await SourcesRepo.upsert({ sourceId, label: resolvedLabel, url: normalizedUrl })

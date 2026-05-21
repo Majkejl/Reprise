@@ -4,6 +4,53 @@ import { LessonsRepo, CardsRepo } from '@/db'
 import type { LessonRow, CardRow } from '@/lib/types'
 
 /**
+ * Maps a card's FSRS state + stability to a mastery percentage (0–100).
+ *
+ * FSRS state values: 0=New, 1=Learning, 2=Review, 3=Relearning.
+ * For Review cards, stability in days is used to interpolate 50–100%
+ * (stability ≥ 90 days is treated as fully mastered).
+ */
+export function computeCardMastery(card: CardRow): number {
+  switch (card.state) {
+    case 1: return 25   // Learning — still in short-interval phase
+    case 3: return 10   // Relearning — lapsed, close to Again
+    case 2: {
+      // Review: stability 0 → 50%, stability 90+ days → 100%
+      return Math.min(100, 50 + Math.round((Math.min(card.stability, 90) / 90) * 50))
+    }
+    default: return 0   // New — never rated
+  }
+}
+
+/**
+ * Returns a map of `sourceId|lessonId` → mastery percentage (0–100) for the given lessons.
+ * Fetches all card rows in a single batch query and averages mastery per lesson.
+ * Lessons with no cards default to 0%.
+ */
+export async function getLessonProgressMap(
+  lessons: LessonRow[],
+): Promise<Record<string, number>> {
+  const keys: Array<[string, string]> = lessons.map(l => [l.sourceId, l.lessonId])
+  const allCards = await CardsRepo.getByLessonKeys(keys)
+
+  const cardsByLesson: Record<string, CardRow[]> = {}
+  for (const card of allCards) {
+    const key = `${card.sourceId}|${card.lessonId}`
+    ;(cardsByLesson[key] ??= []).push(card)
+  }
+
+  const result: Record<string, number> = {}
+  for (const lesson of lessons) {
+    const key = `${lesson.sourceId}|${lesson.lessonId}`
+    const cards = cardsByLesson[key] ?? []
+    if (cards.length === 0) { result[key] = 0; continue }
+    const total = cards.reduce((sum, card) => sum + computeCardMastery(card), 0)
+    result[key] = Math.round(total / cards.length)
+  }
+  return result
+}
+
+/**
  * Returns all lessons currently in the local DB.
  */
 export async function getAllLessons(): Promise<LessonRow[]> {

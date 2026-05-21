@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { getAllLessons, getAllTags, deleteLesson } from '@/services/lessonService'
+import { getAllLessons, getAllTags, deleteLesson, getLessonProgressMap } from '@/services/lessonService'
 import { startSessionForLesson } from '@/services/sessionService'
 import { getAllSources } from '@/services/sourceManager'
 import { useErrorStore } from '@/stores/uiStore'
@@ -26,6 +26,7 @@ export function LessonBrowser() {
   const [lessons, setLessons] = useState<LessonRow[]>([])
   const [sources, setSources] = useState<SourceRow[]>([])
   const [allTags, setAllTags] = useState<string[]>([])
+  const [progressMap, setProgressMap] = useState<Record<string, number>>({})
   const [selectedSourceId, setSelectedSourceId] = useState<string>('all')
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [selectedTag, setSelectedTag] = useState<string>('all')
@@ -43,6 +44,7 @@ export function LessonBrowser() {
         setLessons(loadedLessons)
         setSources(loadedSources)
         setAllTags(loadedTags)
+        setProgressMap(await getLessonProgressMap(loadedLessons))
       } catch (e) {
         showError(String(e))
       }
@@ -135,6 +137,7 @@ export function LessonBrowser() {
             <LessonCard
               key={`${lesson.sourceId}|${lesson.lessonId}`}
               lesson={lesson}
+              progress={progressMap[`${lesson.sourceId}|${lesson.lessonId}`] ?? 0}
               onStudy={handleStudyLesson}
               onDelete={handleDeleteLesson}
             />
@@ -209,19 +212,24 @@ function ChipFilterGroup({
 
 interface LessonCardProps {
   lesson: LessonRow
+  progress: number
   onStudy: (sourceId: string, lessonId: string) => void
   onDelete: (sourceId: string, lessonId: string) => void
 }
 
-function LessonCard({ lesson, onStudy, onDelete }: LessonCardProps) {
+function LessonCard({ lesson, progress, onStudy, onDelete }: LessonCardProps) {
   const accentColor = CAT_COLORS[lesson.category ?? ''] ?? CAT_COLORS[lesson.tags[0]] ?? 'var(--c-text3)'
+  const progressColor = progress >= 90 ? 'var(--c-green)' : 'var(--c-accent)'
   return (
     <li style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', borderLeft: `3px solid ${accentColor}`, borderRadius: 7, display: 'flex', alignItems: 'stretch' }}>
       <Link
         to={`/lessons/${encodeURIComponent(lesson.sourceId)}/${encodeURIComponent(lesson.lessonId)}`}
-        style={{ flex: 1, padding: '10px 12px', textDecoration: 'none' }}
+        style={{ flex: 1, padding: '10px 12px 0', textDecoration: 'none', display: 'flex', flexDirection: 'column' }}
       >
-        <div style={{ fontSize: 12, color: 'var(--c-text)', lineHeight: 1.4 }}>{lesson.title}</div>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+          <div style={{ fontSize: 12, color: 'var(--c-text)', lineHeight: 1.4 }}>{lesson.title}</div>
+          <span style={{ fontSize: 9, color: progress > 0 ? progressColor : 'var(--c-text3)', whiteSpace: 'nowrap', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>{progress}%</span>
+        </div>
         {lesson.tags.length > 0 && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
             {lesson.tags.map(tag => (
@@ -231,6 +239,9 @@ function LessonCard({ lesson, onStudy, onDelete }: LessonCardProps) {
             ))}
           </div>
         )}
+        <div style={{ height: 2, background: 'var(--c-raised)', marginTop: 10, borderRadius: 1 }}>
+          <div style={{ height: '100%', width: `${progress}%`, background: progressColor, borderRadius: 1, transition: 'width 400ms ease' }} />
+        </div>
       </Link>
       <button
         onClick={() => onStudy(lesson.sourceId, lesson.lessonId)}

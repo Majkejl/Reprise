@@ -16,18 +16,18 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
-          cache-dependency-path: app/package-lock.json
+          cache-dependency-path: Reprise/package-lock.json
 
       - name: Install dependencies
-        working-directory: app
+        working-directory: Reprise
         run: npm ci
 
       - name: Lint
-        working-directory: app
+        working-directory: Reprise
         run: npm run lint
 
       - name: Build
-        working-directory: app
+        working-directory: Reprise
         env:
           VITE_BASE_PATH: /reprise/
         run: npm run build

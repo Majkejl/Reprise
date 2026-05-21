@@ -3,8 +3,10 @@ import react from '@vitejs/plugin-react'
 import path from 'path'
 import { VitePWA } from 'vite-plugin-pwa'
 
+const base = process.env.VITE_BASE_PATH ?? '/'
+
 export default defineConfig({
-  base: process.env.VITE_BASE_PATH ?? '/',
+  base,
   plugins: [
     react(),
     VitePWA({
@@ -17,8 +19,9 @@ export default defineConfig({
         theme_color: '#09090b',
         background_color: '#09090b',
         display: 'standalone',
-        start_url: '/',
-        scope: '/',
+        // start_url and scope must match base so the PWA installs correctly on GitHub Pages.
+        start_url: base,
+        scope: base,
         icons: [
           {
             // DECISION: SVG placeholder — replace with PNG (192×192, 512×512) before public launch

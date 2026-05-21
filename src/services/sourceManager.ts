@@ -9,8 +9,7 @@ import { BUNDLE_CACHE_NAME } from '@/lib/types'
 // DECISION: stable identifier for the first-party lesson source row in SourcesRepo.
 export const OFFICIAL_SOURCE_ID = 'reprise-official'
 
-// PLACEHOLDER: update to the GitHub Pages URL once the lessons repo is deployed (E3, E4).
-export const OFFICIAL_SOURCE_URL = 'https://[placeholder].github.io/reprise-lessons/'
+export const OFFICIAL_SOURCE_URL = 'https://majkejl.github.io/Reprise-lessons/'
 
 // DECISION: index.json format: { "lessons": [{ "lessonId", "version", "url" }] }
 // where "url" is a path relative to the source's base URL, or an absolute URL.

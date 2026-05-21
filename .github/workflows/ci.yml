@@ -1,4 +1,4 @@
-name: CI
+name: CI / Deploy
 
 on:
   push:
@@ -9,6 +9,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
 
@@ -26,5 +27,32 @@ jobs:
 
       - name: Build
         env:
-          VITE_BASE_PATH: /reprise/
+          VITE_BASE_PATH: /Reprise/
         run: npm run build
+
+      # Upload as a Pages artifact so the deploy job can consume it directly.
+      # Only meaningful on master push, but uploading on every build is harmless.
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist/
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    # Deploy only on direct pushes to master — not on PRs or other branches.
+    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+
+    permissions:
+      pages: write
+      id-token: write
+      contents: read
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

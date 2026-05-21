@@ -1,11 +1,9 @@
 // uiStore.ts — UI & Scope Store (scope, sync status, modal state) and global error store.
 
 import { create } from 'zustand'
-import type { Scope } from '@/lib/types'
+import type { Scope, SyncStatus } from '@/lib/types'
 import { DEFAULT_SCOPE } from '@/lib/types'
 import { SettingsRepo } from '@/db'
-
-type SyncStatus = 'idle' | 'syncing' | 'error' | 'done'
 
 interface UIState {
   scope: Scope

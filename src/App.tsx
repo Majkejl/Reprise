@@ -5,7 +5,8 @@ import { HashRouter, Routes, Route } from 'react-router-dom'
 import { Nav } from '@/components/Nav'
 import { OfflineIndicator } from '@/components/OfflineIndicator'
 import { ErrorNotification } from '@/components/ErrorNotification'
-import { useUIStore } from '@/stores/uiStore'
+import { useUIStore, useErrorStore } from '@/stores/uiStore'
+import { ensureOfficialSource } from '@/services/sourceManager'
 import { Dashboard } from '@/views/Dashboard'
 import { StudySession } from '@/views/StudySession'
 import { LessonBrowser } from '@/views/LessonBrowser'
@@ -16,10 +17,12 @@ import { Settings } from '@/views/Settings'
 
 export function App() {
   const loadScope = useUIStore(s => s.loadScope)
+  const showError = useErrorStore(s => s.show)
 
   useEffect(() => {
     void loadScope()
-  }, [loadScope])
+    void ensureOfficialSource().catch(e => showError(String(e)))
+  }, [loadScope, showError])
 
   return (
     <HashRouter>

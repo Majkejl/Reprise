@@ -106,6 +106,10 @@ export interface SettingsRow {
   value: unknown
 }
 
+// ─── Sync ─────────────────────────────────────────────────────────────────────
+
+export type SyncStatus = 'idle' | 'syncing' | 'error' | 'done'
+
 // ─── Settings ─────────────────────────────────────────────────────────────────
 
 export type SettingsKey = 'scope' | 'sessionCap' | 'queuePriority'

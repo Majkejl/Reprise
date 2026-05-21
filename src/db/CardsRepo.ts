@@ -43,6 +43,11 @@ export const CardsRepo = {
     return db.cards.delete([sourceId, lessonId, cardId])
   },
 
+  /** Returns every card row in the DB. Used for full export. */
+  getAll() {
+    return db.cards.toArray()
+  },
+
   /** Deletes all card rows belonging to a given lesson. */
   deleteByLesson(sourceId: string, lessonId: string) {
     return db.cards.where('[sourceId+lessonId]').equals([sourceId, lessonId]).delete()

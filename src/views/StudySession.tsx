@@ -4,7 +4,6 @@ import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { LessonEngine } from '@/components/LessonEngine'
 import { startSession, getCardAndContext, completeCard, undoLastRating } from '@/services/sessionService'
-import { SettingsRepo } from '@/db'
 import { OFFICIAL_SOURCE_ID } from '@/services/sourceManager'
 import {
   useSessionStore,
@@ -34,7 +33,6 @@ export function StudySession() {
   const lastCompleted = useSessionStore(state => state.lastCompleted)
 
   const [loading, setLoading] = useState(true)
-  const [previewNewCards, setPreviewNewCards] = useState(false)
   const [cardData, setCardData] = useState<{
     card: LessonCard
     cardRow: CardRow
@@ -46,9 +44,6 @@ export function StudySession() {
     async function init() {
       try {
         setLoading(true)
-        const storedPreview = await SettingsRepo.get<boolean>('previewNewCards')
-        if (storedPreview !== undefined) setPreviewNewCards(storedPreview)
-
         // If a pre-seeded queue already exists (started via "Study this lesson"), use it as-is.
         if (!useSessionStore.getState().isActive) {
           const queue = await startSession(scope)
@@ -154,8 +149,6 @@ export function StudySession() {
           context={cardData.context}
           componentBundleUrl={cardData.componentBundleUrl}
           isTrustedSource={currentItem?.sourceId === OFFICIAL_SOURCE_ID}
-          isNew={currentItem?.isNew ?? false}
-          previewMode={previewNewCards}
           onComplete={handleComplete}
         />
       ) : (

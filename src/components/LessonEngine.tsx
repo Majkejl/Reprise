@@ -25,10 +25,6 @@ interface LessonEngineProps {
    * Defaults to true for backward compatibility.
    */
   isTrustedSource?: boolean
-  /** When true the card belongs to the new-card pool (reps === 0). */
-  isNew?: boolean
-  /** When true and isNew is also true, the answer and explanation are pre-revealed before rating. */
-  previewMode?: boolean
   onComplete: (result: { rating: 1 | 2 | 3 | 4 }) => void
 }
 
@@ -71,18 +67,36 @@ function RatingButtons({ onRate }: { onRate: (r: 1 | 2 | 3 | 4) => void }) {
   )
 }
 
+// ─── Explanation toggle ───────────────────────────────────────────────────────
+
+/** Collapsible explanation panel shown after a card is revealed. Hidden by default. */
+function ExplanationToggle({ text }: { text: string }) {
+  const [isVisible, setIsVisible] = useState(false)
+  return (
+    <div className="flex flex-col gap-2">
+      <button
+        onClick={() => setIsVisible(v => !v)}
+        className="self-start text-xs px-2 py-1 rounded border border-zinc-700 text-zinc-500 hover:text-zinc-300 hover:border-zinc-500 transition-colors"
+      >
+        {isVisible ? 'Hide explanation' : 'Show explanation'}
+      </button>
+      {isVisible && (
+        <p className="text-sm text-zinc-400 border-l-2 border-zinc-700 pl-3 leading-relaxed">{text}</p>
+      )}
+    </div>
+  )
+}
+
 // ─── Multiple choice ──────────────────────────────────────────────────────────
 
 function MultipleChoiceRenderer({
   card,
   onComplete,
-  startRevealed = false,
 }: {
   card: MultipleChoiceCard
   onComplete: (r: { rating: 1 | 2 | 3 | 4 }) => void
-  startRevealed?: boolean
 }) {
-  const [selected, setSelected] = useState<number | null>(startRevealed ? card.correctIndex : null)
+  const [selected, setSelected] = useState<number | null>(null)
   const isRevealed = selected !== null
 
   function handleSelect(idx: number) {
@@ -125,10 +139,8 @@ function MultipleChoiceRenderer({
         })}
       </ul>
       {isRevealed && (
-        <div role="status">
-          {card.explanation && (
-            <p className="text-sm text-zinc-400 border-l-2 border-zinc-700 pl-3 mb-6">{card.explanation}</p>
-          )}
+        <div role="status" className="flex flex-col gap-4">
+          {card.explanation && <ExplanationToggle text={card.explanation} />}
           <RatingButtons onRate={rating => onComplete({ rating })} />
         </div>
       )}
@@ -141,14 +153,12 @@ function MultipleChoiceRenderer({
 function FillInBlankRenderer({
   card,
   onComplete,
-  startRevealed = false,
 }: {
   card: FillInBlankCard
   onComplete: (r: { rating: 1 | 2 | 3 | 4 }) => void
-  startRevealed?: boolean
 }) {
   const [answer, setAnswer] = useState('')
-  const [isRevealed, setIsRevealed] = useState(startRevealed)
+  const [isRevealed, setIsRevealed] = useState(false)
 
   const parts = card.prompt.split('___')
 
@@ -199,9 +209,7 @@ function FillInBlankRenderer({
               Accepted: {card.acceptedAnswers.join(' / ')}
             </p>
           )}
-          {card.explanation && (
-            <p className="text-sm text-zinc-400 border-l-2 border-zinc-700 pl-3">{card.explanation}</p>
-          )}
+          {card.explanation && <ExplanationToggle text={card.explanation} />}
           <RatingButtons onRate={rating => onComplete({ rating })} />
         </>
       )}
@@ -214,13 +222,11 @@ function FillInBlankRenderer({
 function FreeTextRenderer({
   card,
   onComplete,
-  startRevealed = false,
 }: {
   card: FreeTextCard
   onComplete: (r: { rating: 1 | 2 | 3 | 4 }) => void
-  startRevealed?: boolean
 }) {
-  const [isRevealed, setIsRevealed] = useState(startRevealed)
+  const [isRevealed, setIsRevealed] = useState(false)
 
   return (
     <div className="flex flex-col gap-6">
@@ -234,11 +240,7 @@ function FreeTextRenderer({
         </button>
       ) : (
         <>
-          {card.explanation && (
-            <p className="text-sm text-zinc-300 border-l-2 border-zinc-700 pl-3 leading-relaxed">
-              {card.explanation}
-            </p>
-          )}
+          {card.explanation && <ExplanationToggle text={card.explanation} />}
           <RatingButtons onRate={rating => onComplete({ rating })} />
         </>
       )}
@@ -252,15 +254,13 @@ function FreeTextRenderer({
 function DefaultCardContent({
   card,
   onComplete,
-  startRevealed = false,
 }: {
   card: LessonCard
   onComplete: (r: { rating: 1 | 2 | 3 | 4 }) => void
-  startRevealed?: boolean
 }) {
-  if (card.type === 'multiple-choice') return <MultipleChoiceRenderer card={card} onComplete={onComplete} startRevealed={startRevealed} />
-  if (card.type === 'fill-in-blank') return <FillInBlankRenderer card={card} onComplete={onComplete} startRevealed={startRevealed} />
-  if (card.type === 'free-text') return <FreeTextRenderer card={card} onComplete={onComplete} startRevealed={startRevealed} />
+  if (card.type === 'multiple-choice') return <MultipleChoiceRenderer card={card} onComplete={onComplete} />
+  if (card.type === 'fill-in-blank') return <FillInBlankRenderer card={card} onComplete={onComplete} />
+  if (card.type === 'free-text') return <FreeTextRenderer card={card} onComplete={onComplete} />
   return null
 }
 
@@ -466,15 +466,12 @@ export function LessonEngine({
   context,
   componentBundleUrl,
   isTrustedSource = true,
-  isNew = false,
-  previewMode = false,
   onComplete,
 }: LessonEngineProps) {
   // Pass the bundle URL to useCustomRenderer only for trusted sources; undefined is a no-op.
   const { CustomRenderer, isLoadingBundle } = useCustomRenderer(
     isTrustedSource ? componentBundleUrl : undefined,
   )
-  const startRevealed = isNew && previewMode
 
   const header = (
     <div className="flex flex-wrap gap-2 text-xs text-zinc-600">
@@ -496,7 +493,7 @@ export function LessonEngine({
             card={card}
             context={context}
             onComplete={onComplete}
-            fallback={<DefaultCardContent card={card} onComplete={onComplete} startRevealed={startRevealed} />}
+            fallback={<DefaultCardContent card={card} onComplete={onComplete} />}
           />
         </div>
       </div>
@@ -521,7 +518,7 @@ export function LessonEngine({
         {CustomRenderer ? (
           <CustomRenderer card={card} context={context} onComplete={onComplete} />
         ) : (
-          <DefaultCardContent card={card} onComplete={onComplete} startRevealed={startRevealed} />
+          <DefaultCardContent card={card} onComplete={onComplete} />
         )}
       </div>
     </div>

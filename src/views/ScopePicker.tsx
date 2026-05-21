@@ -81,7 +81,6 @@ export function ScopePicker() {
             key={source.sourceId}
             label={source.label}
             isChecked={!isAllSources && selectedSourceIds.includes(source.sourceId)}
-            isDisabled={isAllSources}
             onToggle={() => handleSourceToggle(source.sourceId)}
           />
         ))}
@@ -102,7 +101,6 @@ export function ScopePicker() {
             key={tag}
             label={tag}
             isChecked={!isAllTags && selectedTags.includes(tag)}
-            isDisabled={isAllTags}
             onToggle={() => handleTagToggle(tag)}
           />
         ))}

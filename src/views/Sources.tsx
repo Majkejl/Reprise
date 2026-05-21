@@ -16,6 +16,17 @@ import { getCategoriesForSource } from '@/services/lessonService'
 import { useUIStore, useErrorStore } from '@/stores/uiStore'
 import type { SourceRow, SyncStatus } from '@/lib/types'
 
+const inputStyle: React.CSSProperties = {
+  width: '100%', padding: '9px 12px', background: 'var(--c-raised)',
+  border: '1px solid var(--c-border)', borderRadius: 5,
+  color: 'var(--c-text)', fontFamily: 'inherit', fontSize: 11, outline: 'none',
+}
+
+const secondaryButtonStyle: React.CSSProperties = {
+  padding: '4px 10px', background: 'none', border: '1px solid var(--c-border)',
+  borderRadius: 4, color: 'var(--c-text2)', fontSize: 10, fontFamily: 'inherit', cursor: 'pointer',
+}
+
 export function Sources() {
   const [sources, setSources] = useState<SourceRow[]>([])
   const [newSourceUrl, setNewSourceUrl] = useState('')
@@ -57,7 +68,6 @@ export function Sources() {
     const onProgress: SyncProgressCallback = (id, status) => setSyncStatus(id, status)
     try {
       await syncSource(sourceId, onProgress)
-      // Refresh categories after sync — new lessons may have introduced new categories.
       await loadSources()
     } catch (e) {
       showError(String(e))
@@ -104,7 +114,6 @@ export function Sources() {
     const available = categoriesMap[sourceId] ?? []
     let next: string[] | 'all'
     if (current === 'all') {
-      // Going from "all" to a specific list: exclude this category from the active set.
       const withoutThis = available.filter(c => c !== category)
       next = withoutThis.length === 0 ? 'all' : withoutThis
     } else {
@@ -130,25 +139,25 @@ export function Sources() {
   }
 
   return (
-    <div className="px-4 py-8 max-w-lg mx-auto flex flex-col gap-8">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl text-zinc-100 font-medium tracking-tight">Sources</h1>
+    <div style={{ padding: '20px 16px', display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 512, margin: '0 auto' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <h1 style={{ fontSize: 16, color: 'var(--c-text)', fontWeight: 500 }}>Sources</h1>
         <button
           onClick={handleSyncAll}
           disabled={isSyncingAll || sources.length === 0}
-          className="text-xs px-3 py-1.5 rounded border border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:border-zinc-500 disabled:opacity-40 transition-colors"
+          style={{ ...secondaryButtonStyle, opacity: (isSyncingAll || sources.length === 0) ? 0.4 : 1 }}
         >
           {isSyncingAll ? 'Syncing…' : 'Sync all'}
         </button>
       </div>
 
-      <p className="text-xs text-zinc-600 -mt-6">
-        Sync is append-only — removing a lesson from a source repo does not remove it from your device.
+      <p style={{ fontSize: 10, color: 'var(--c-text3)', marginTop: -6, lineHeight: 1.6 }}>
+        Sync is append-only — removing a lesson from a source does not remove it from your device.
       </p>
 
-      <ul className="flex flex-col gap-3">
+      <ul style={{ display: 'flex', flexDirection: 'column', gap: 8, listStyle: 'none', margin: 0, padding: 0 }}>
         {sources.length === 0 && (
-          <li className="text-zinc-500 text-sm">No sources registered.</li>
+          <li style={{ fontSize: 12, color: 'var(--c-text3)' }}>No sources registered.</li>
         )}
         {sources.map(source => (
           <SourceListItem
@@ -166,29 +175,31 @@ export function Sources() {
         ))}
       </ul>
 
-      <form onSubmit={handleAddSource} className="flex flex-col gap-2 pt-4 border-t border-zinc-800">
-        <p className="text-xs text-zinc-500 font-medium">Add a lesson source</p>
-        <input
-          type="url"
-          placeholder="https://example.com/lessons/"
-          value={newSourceUrl}
-          onChange={e => setNewSourceUrl(e.target.value)}
-          className="rounded border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-zinc-500"
-        />
-        <input
-          type="text"
-          placeholder="Label (optional)"
-          value={newSourceLabel}
-          onChange={e => setNewSourceLabel(e.target.value)}
-          className="rounded border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-zinc-500"
-        />
-        <button
-          type="submit"
-          disabled={!newSourceUrl.trim()}
-          className="self-start text-xs px-3 py-1.5 rounded border border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:border-zinc-500 disabled:opacity-40 transition-colors"
-        >
-          Add source
-        </button>
+      <form onSubmit={handleAddSource} style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 14, borderTop: '1px solid var(--c-border)' }}>
+        <div style={{ fontSize: 10, color: 'var(--c-text3)', letterSpacing: '0.07em', fontStyle: 'italic' }}>// ADD SOURCE</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
+          <input
+            type="url"
+            placeholder="https://example.com/lessons/"
+            value={newSourceUrl}
+            onChange={e => setNewSourceUrl(e.target.value)}
+            style={inputStyle}
+          />
+          <input
+            type="text"
+            placeholder="Label (optional)"
+            value={newSourceLabel}
+            onChange={e => setNewSourceLabel(e.target.value)}
+            style={inputStyle}
+          />
+          <button
+            type="submit"
+            disabled={!newSourceUrl.trim()}
+            style={{ ...secondaryButtonStyle, alignSelf: 'flex-start', padding: '7px 14px', opacity: !newSourceUrl.trim() ? 0.4 : 1 }}
+          >
+            Add source
+          </button>
+        </div>
       </form>
     </div>
   )
@@ -222,48 +233,34 @@ function SourceListItem({
   const isSyncing = status === 'syncing'
 
   return (
-    <li className="rounded border border-zinc-800 bg-zinc-900/50 px-4 py-3 flex flex-col gap-2">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex flex-col gap-0.5 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-zinc-200 truncate">{source.label}</span>
-            {isOfficial ? (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-sky-950 text-sky-400 border border-sky-900 shrink-0">
+    <li style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', borderRadius: 7, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+            <span style={{ fontSize: 12, color: 'var(--c-text)' }}>{source.label}</span>
+            {isOfficial && (
+              <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 3, background: 'color-mix(in srgb, var(--c-accent) 12%, transparent)', border: '1px solid color-mix(in srgb, var(--c-accent) 20%, transparent)', color: 'var(--c-accent)' }}>
                 official
-              </span>
-            ) : (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-500 border border-zinc-700 shrink-0">
-                user
               </span>
             )}
             <SyncStatusBadge status={status} />
           </div>
           {source.lastSynced !== undefined ? (
-            <span className="text-xs text-zinc-600">
-              Last synced {new Date(source.lastSynced).toLocaleString()}
-            </span>
+            <div style={{ fontSize: 10, color: 'var(--c-text3)' }}>synced {new Date(source.lastSynced).toLocaleString()}</div>
           ) : (
-            <span className="text-xs text-zinc-700">Never synced</span>
+            <div style={{ fontSize: 10, color: 'var(--c-text3)' }}>never synced</div>
           )}
           {source.url && (
-            <span className="text-xs text-zinc-700 truncate">{source.url}</span>
+            <div style={{ fontSize: 10, color: 'var(--c-text3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 2 }}>{source.url}</div>
           )}
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            onClick={onSync}
-            disabled={isSyncing}
-            className="text-xs px-2 py-1 rounded border border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:border-zinc-500 disabled:opacity-40 transition-colors"
-          >
+        <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
+          <button onClick={onSync} disabled={isSyncing} style={{ ...secondaryButtonStyle, opacity: isSyncing ? 0.4 : 1 }}>
             {isSyncing ? 'Syncing…' : 'Sync'}
           </button>
           {!isOfficial && (
-            <button
-              onClick={onRemove}
-              disabled={isSyncing}
-              className="text-xs px-2 py-1 rounded border border-zinc-800 text-zinc-600 hover:text-red-400 hover:border-red-900 disabled:opacity-40 transition-colors"
-            >
-              Remove
+            <button onClick={onRemove} disabled={isSyncing} style={{ ...secondaryButtonStyle, color: 'var(--c-text3)', opacity: isSyncing ? 0.4 : 1 }}>
+              ✕
             </button>
           )}
         </div>
@@ -288,25 +285,14 @@ interface CategoryFilterRowProps {
   onSetAllCategories: () => void
 }
 
-function CategoryFilterRow({
-  availableCategories,
-  categoryFilter,
-  onToggleCategory,
-  onSetAllCategories,
-}: CategoryFilterRowProps) {
+function CategoryFilterRow({ availableCategories, categoryFilter, onToggleCategory, onSetAllCategories }: CategoryFilterRowProps) {
   const isAll = categoryFilter === 'all'
 
   return (
-    <div className="pt-1 border-t border-zinc-800/60 flex flex-col gap-1.5">
-      <span className="text-[10px] text-zinc-600">
-        Sync categories (applies to future syncs):
-      </span>
-      <div className="flex flex-wrap gap-1.5">
-        <CategoryChip
-          label="All"
-          isActive={isAll}
-          onClick={onSetAllCategories}
-        />
+    <div style={{ paddingTop: 8, borderTop: '1px solid var(--c-border)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <span style={{ fontSize: 10, color: 'var(--c-text3)' }}>Sync categories (applies to future syncs):</span>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+        <CategoryChip label="All" isActive={isAll} isImplied={false} onClick={onSetAllCategories} />
         {availableCategories.map(cat => (
           <CategoryChip
             key={cat}
@@ -324,22 +310,21 @@ function CategoryFilterRow({
 interface CategoryChipProps {
   label: string
   isActive: boolean
-  /** True when active because "All" is selected, not explicitly chosen. */
   isImplied?: boolean
   onClick: () => void
 }
 
 function CategoryChip({ label, isActive, isImplied = false, onClick }: CategoryChipProps) {
+  const active = isActive && !isImplied
   return (
     <button
       onClick={onClick}
-      className={`text-[10px] px-2 py-0.5 rounded border transition-colors ${
-        isActive && !isImplied
-          ? 'border-sky-700 bg-sky-900/60 text-sky-300'
-          : isImplied
-            ? 'border-sky-900/50 bg-sky-950/40 text-sky-600'
-            : 'border-zinc-700 text-zinc-500 hover:border-zinc-600 hover:text-zinc-400'
-      }`}
+      style={{
+        padding: '3px 8px', borderRadius: 4, fontSize: 10, fontFamily: 'inherit', cursor: 'pointer',
+        border: `1px solid ${active ? 'var(--c-accent)' : isImplied ? 'color-mix(in srgb, var(--c-accent) 20%, transparent)' : 'var(--c-border)'}`,
+        background: active ? 'color-mix(in srgb, var(--c-accent) 10%, transparent)' : isImplied ? 'color-mix(in srgb, var(--c-accent) 5%, transparent)' : 'var(--c-raised)',
+        color: active ? 'var(--c-accent)' : isImplied ? 'color-mix(in srgb, var(--c-accent) 50%, transparent)' : 'var(--c-text3)',
+      }}
     >
       {label}
     </button>
@@ -348,19 +333,19 @@ function CategoryChip({ label, isActive, isImplied = false, onClick }: CategoryC
 
 function SyncStatusBadge({ status }: { status: SyncStatus }) {
   if (status === 'idle') return null
-  const styles: Record<string, string> = {
-    syncing: 'text-sky-400',
-    done: 'text-emerald-400',
-    error: 'text-red-400',
+  const colorMap: Record<string, string> = {
+    syncing: 'var(--c-accent)',
+    done: 'var(--c-green)',
+    error: 'var(--c-red)',
   }
-  const labels: Record<string, string> = {
+  const labelMap: Record<string, string> = {
     syncing: 'syncing…',
     done: 'up to date',
     error: 'error',
   }
   return (
-    <span className={`text-[10px] ${styles[status] ?? ''}`}>
-      {labels[status] ?? status}
+    <span style={{ fontSize: 10, color: colorMap[status] ?? 'var(--c-text3)' }}>
+      {labelMap[status] ?? status}
     </span>
   )
 }

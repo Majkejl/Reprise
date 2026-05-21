@@ -13,21 +13,35 @@ const links = [
 
 export function Nav() {
   return (
-    <nav aria-label="Main" className="border-b border-zinc-800 bg-zinc-950 px-4">
-      <ul className="flex gap-1 overflow-x-auto">
+    <nav aria-label="Main" style={{ background: 'var(--c-bg)', borderBottom: '1px solid var(--c-border)', flexShrink: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px 6px' }}>
+        <div style={{
+          width: 22, height: 22, borderRadius: 5,
+          background: 'color-mix(in srgb, var(--c-accent) 10%, transparent)',
+          border: '1px solid color-mix(in srgb, var(--c-accent) 20%, transparent)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 12, color: 'var(--c-accent)', userSelect: 'none',
+        }}>↻</div>
+        <span style={{ fontSize: 11, color: 'var(--c-text2)', letterSpacing: '0.14em', fontWeight: 500 }}>
+          REPRISE
+        </span>
+      </div>
+      <ul style={{ display: 'flex', overflowX: 'auto', padding: '0 6px', margin: 0, listStyle: 'none' }}>
         {links.map(({ to, label, end }) => (
           <li key={to}>
             <NavLink
               to={to}
               end={end}
-              className={({ isActive }) =>
-                [
-                  'block px-3 py-3 text-sm transition-colors',
-                  isActive
-                    ? 'border-b-2 border-sky-400 text-zinc-100'
-                    : 'text-zinc-500 hover:text-zinc-300',
-                ].join(' ')
-              }
+              style={({ isActive }) => ({
+                display: 'block',
+                padding: '7px 10px',
+                fontSize: 11,
+                whiteSpace: 'nowrap',
+                textDecoration: 'none',
+                transition: 'color 120ms',
+                color: isActive ? 'var(--c-text)' : 'var(--c-text2)',
+                borderBottom: `2px solid ${isActive ? 'var(--c-accent)' : 'transparent'}`,
+              })}
             >
               {label}
             </NavLink>

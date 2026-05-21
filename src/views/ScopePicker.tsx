@@ -36,8 +36,6 @@ export function ScopePicker() {
   const isAllCategories = (scope.categories ?? 'all') === 'all'
   const isAllTags = scope.tags === 'all'
 
-  // Tags section is expanded by default only if specific tags are already selected,
-  // so users with a clean scope see a compact view.
   const [isTagsExpanded, setIsTagsExpanded] = useState(!isAllTags)
 
   const selectedSourceIds = isAllSources ? [] : (scope.sourceIds as string[])
@@ -92,17 +90,19 @@ export function ScopePicker() {
   }
 
   return (
-    <div className="px-4 py-8 max-w-lg mx-auto flex flex-col gap-8">
-      <div>
-        <h1 className="text-xl text-zinc-100 font-medium tracking-tight">Scope</h1>
-        <p className="text-xs text-zinc-500 mt-1">
-          Choose what is included in your study sessions. Changes take effect at the next session start.
+    <div style={{ padding: '20px 16px', display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 512, margin: '0 auto' }}>
+      <div style={{ marginBottom: 16 }}>
+        <h1 style={{ fontSize: 16, color: 'var(--c-text)', fontWeight: 500 }}>Scope</h1>
+        <p style={{ fontSize: 11, color: 'var(--c-text2)', marginTop: 3, lineHeight: 1.5 }}>
+          Define what appears in study sessions.
         </p>
       </div>
 
       {/* ── Sources ── */}
-      <section aria-labelledby="scope-sources-heading" className="flex flex-col gap-3">
-        <h2 id="scope-sources-heading" className="text-xs text-zinc-400 font-medium uppercase tracking-wide">Sources</h2>
+      <section aria-labelledby="scope-sources-heading">
+        <h2 id="scope-sources-heading" style={{ fontSize: 10, color: 'var(--c-text3)', letterSpacing: '0.07em', marginBottom: 6, fontStyle: 'italic', fontWeight: 400 }}>
+          // SOURCES
+        </h2>
         <CheckRow label="All sources" isChecked={isAllSources} onToggle={handleSourcesAllToggle} />
         {availableSources.map(source => (
           <CheckRow
@@ -110,17 +110,20 @@ export function ScopePicker() {
             label={source.label}
             isChecked={!isAllSources && selectedSourceIds.includes(source.sourceId)}
             onToggle={() => handleSourceToggle(source.sourceId)}
+            indent
           />
         ))}
         {availableSources.length === 0 && (
-          <p className="text-xs text-zinc-600">No sources registered yet.</p>
+          <p style={{ fontSize: 11, color: 'var(--c-text3)' }}>No sources registered yet.</p>
         )}
       </section>
 
       {/* ── Categories ── */}
       {availableCategories.length > 0 && (
-        <section aria-labelledby="scope-categories-heading" className="flex flex-col gap-3">
-          <h2 id="scope-categories-heading" className="text-xs text-zinc-400 font-medium uppercase tracking-wide">Categories</h2>
+        <section aria-labelledby="scope-categories-heading" style={{ marginTop: 14 }}>
+          <h2 id="scope-categories-heading" style={{ fontSize: 10, color: 'var(--c-text3)', letterSpacing: '0.07em', marginBottom: 6, fontStyle: 'italic', fontWeight: 400 }}>
+            // CATEGORIES
+          </h2>
           <CheckRow label="All categories" isChecked={isAllCategories} onToggle={handleCategoriesAllToggle} />
           {availableCategories.map(category => (
             <CheckRow
@@ -128,32 +131,33 @@ export function ScopePicker() {
               label={category}
               isChecked={!isAllCategories && selectedCategories.includes(category)}
               onToggle={() => handleCategoryToggle(category)}
+              indent
             />
           ))}
         </section>
       )}
 
       {/* ── Tags (collapsible) ── */}
-      <section aria-labelledby="scope-tags-heading" className="flex flex-col gap-3">
+      <section aria-labelledby="scope-tags-heading" style={{ marginTop: 14 }}>
         <button
           id="scope-tags-heading"
           onClick={() => setIsTagsExpanded(v => !v)}
-          className="flex items-center justify-between text-xs text-zinc-400 font-medium uppercase tracking-wide w-full text-left"
           aria-expanded={isTagsExpanded}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', width: '100%', textAlign: 'left', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}
         >
-          <span>
-            Tags
+          <span style={{ fontSize: 10, color: 'var(--c-text3)', letterSpacing: '0.07em', fontStyle: 'italic' }}>
+            {'// TAGS'}
             {!isAllTags && (
-              <span className="ml-2 text-sky-400 normal-case font-normal">
+              <span style={{ marginLeft: 8, color: 'var(--c-accent)', fontStyle: 'normal', letterSpacing: 0 }}>
                 {selectedTags.length} selected
               </span>
             )}
           </span>
-          <span className={`transition-transform ${isTagsExpanded ? 'rotate-180' : ''}`}>▾</span>
+          <span style={{ fontSize: 10, color: 'var(--c-text3)', transform: isTagsExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 120ms' }}>▾</span>
         </button>
 
         {isTagsExpanded && (
-          <div className="flex flex-col gap-3">
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
             <CheckRow label="All tags" isChecked={isAllTags} onToggle={handleTagsAllToggle} />
 
             {flatTags.map(tag => (
@@ -169,7 +173,7 @@ export function ScopePicker() {
               const allInGroup = isAllTags || group.tags.every(t => selectedTags.includes(t))
               const someInGroup = !isAllTags && group.tags.some(t => selectedTags.includes(t))
               return (
-                <div key={group.prefix} className="flex flex-col gap-2">
+                <div key={group.prefix}>
                   <GroupRow
                     label={group.prefix}
                     isAllChecked={allInGroup}
@@ -177,20 +181,20 @@ export function ScopePicker() {
                     onToggle={() => handleGroupToggle(group.tags)}
                   />
                   {group.tags.map(tag => (
-                    <div key={tag} className="pl-7">
-                      <CheckRow
-                        label={tag.slice(group.prefix.length + 1)}
-                        isChecked={isAllTags || selectedTags.includes(tag)}
-                        onToggle={() => handleTagToggle(tag)}
-                      />
-                    </div>
+                    <CheckRow
+                      key={tag}
+                      label={tag.slice(group.prefix.length + 1)}
+                      isChecked={isAllTags || selectedTags.includes(tag)}
+                      onToggle={() => handleTagToggle(tag)}
+                      indent
+                    />
                   ))}
                 </div>
               )
             })}
 
             {availableTags.length === 0 && (
-              <p className="text-xs text-zinc-600">No tags found in synced lessons.</p>
+              <p style={{ fontSize: 11, color: 'var(--c-text3)' }}>No tags found in synced lessons.</p>
             )}
           </div>
         )}
@@ -233,26 +237,31 @@ interface CheckRowProps {
   isChecked: boolean
   isDisabled?: boolean
   onToggle: () => void
+  indent?: boolean
 }
 
-function CheckRow({ label, isChecked, isDisabled = false, onToggle }: CheckRowProps) {
+function CheckRow({ label, isChecked, isDisabled = false, onToggle, indent = false }: CheckRowProps) {
   return (
     <button
       onClick={onToggle}
       disabled={isDisabled}
       aria-pressed={isChecked}
-      className="flex items-center gap-3 text-sm text-left disabled:opacity-40"
+      style={{
+        display: 'flex', alignItems: 'center', gap: 10, background: 'none', border: 'none',
+        cursor: 'pointer', fontFamily: 'inherit', width: '100%', textAlign: 'left',
+        paddingLeft: indent ? 22 : 0, paddingTop: 5, paddingBottom: 5, opacity: isDisabled ? 0.4 : 1,
+      }}
     >
-      <span
-        className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
-          isChecked
-            ? 'border-sky-600 bg-sky-900/60 text-sky-400'
-            : 'border-zinc-700 text-transparent'
-        }`}
-      >
-        ✓
+      <span style={{
+        width: 15, height: 15, borderRadius: 3, flexShrink: 0,
+        border: `1px solid ${isChecked ? 'var(--c-accent)' : 'var(--c-border)'}`,
+        background: isChecked ? 'color-mix(in srgb, var(--c-accent) 10%, transparent)' : 'transparent',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 9, color: isChecked ? 'var(--c-accent)' : 'transparent', lineHeight: 1, transition: 'all 120ms',
+      }}>✓</span>
+      <span style={{ fontSize: 12, color: isChecked ? 'var(--c-text)' : 'var(--c-text2)', transition: 'color 120ms' }}>
+        {label}
       </span>
-      <span className={isChecked ? 'text-zinc-200' : 'text-zinc-400'}>{label}</span>
     </button>
   )
 }
@@ -265,24 +274,27 @@ interface GroupRowProps {
 }
 
 function GroupRow({ label, isAllChecked, isSomeChecked, onToggle }: GroupRowProps) {
+  const isAny = isAllChecked || isSomeChecked
   return (
     <button
       onClick={onToggle}
       aria-pressed={isAllChecked}
-      className="flex items-center gap-3 text-sm text-left font-medium"
+      style={{
+        display: 'flex', alignItems: 'center', gap: 10, background: 'none', border: 'none',
+        cursor: 'pointer', fontFamily: 'inherit', width: '100%', textAlign: 'left',
+        paddingTop: 5, paddingBottom: 5,
+      }}
     >
-      <span
-        className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
-          isAllChecked
-            ? 'border-sky-600 bg-sky-900/60 text-sky-400'
-            : isSomeChecked
-              ? 'border-sky-700/60 bg-sky-900/20 text-sky-600'
-              : 'border-zinc-700 text-transparent'
-        }`}
-      >
+      <span style={{
+        width: 15, height: 15, borderRadius: 3, flexShrink: 0,
+        border: `1px solid ${isAny ? 'color-mix(in srgb, var(--c-accent) 60%, transparent)' : 'var(--c-border)'}`,
+        background: isAny ? 'color-mix(in srgb, var(--c-accent) 10%, transparent)' : 'transparent',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 9, color: isAny ? 'var(--c-accent)' : 'transparent', lineHeight: 1, transition: 'all 120ms',
+      }}>
         {isAllChecked ? '✓' : isSomeChecked ? '–' : '✓'}
       </span>
-      <span className={isAllChecked || isSomeChecked ? 'text-zinc-200' : 'text-zinc-400'}>
+      <span style={{ fontSize: 12, fontWeight: 500, color: isAny ? 'var(--c-text)' : 'var(--c-text2)', transition: 'color 120ms' }}>
         {label}
       </span>
     </button>

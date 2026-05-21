@@ -4,9 +4,35 @@
 
 :root {
   color-scheme: dark;
+  --c-bg:      #0b0d13;
+  --c-surface: #111520;
+  --c-raised:  #161c28;
+  --c-border:  #1d2335;
+  --c-text:    #dde1ee;
+  --c-text2:   #6e7a96;
+  --c-text3:   #394258;
+  --c-accent:  #a78bfa;
+  --c-green:   #4ecf7f;
+  --c-amber:   #f0b44a;
+  --c-red:     #f07070;
+  --c-purple:  #a78bfa;
 }
 
 body {
-  @apply bg-zinc-950 text-zinc-100 font-mono;
-  font-family: 'DM Mono', 'Fira Mono', ui-monospace, monospace;
+  background: var(--c-bg);
+  color: var(--c-text);
+  font-family: 'JetBrains Mono', 'DM Mono', ui-monospace, monospace;
 }
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--c-border); border-radius: 2px; }
+
+input:focus, textarea:focus {
+  border-color: var(--c-accent) !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--c-accent) 12%, transparent) !important;
+  outline: none;
+}
+
+button { transition: opacity 100ms, transform 80ms; }
+button:active { opacity: 0.75; transform: scale(0.97); }

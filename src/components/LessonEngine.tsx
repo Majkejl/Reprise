@@ -28,11 +28,11 @@ interface LessonEngineProps {
   onComplete: (result: { rating: 1 | 2 | 3 | 4 }) => void
 }
 
-const RATINGS: Array<{ value: 1 | 2 | 3 | 4; label: string; sub: string; color: string }> = [
-  { value: 1, label: 'Again', sub: '<1 min', color: 'border-red-700 text-red-400 hover:bg-red-900/30' },
-  { value: 2, label: 'Hard', sub: '<10 min', color: 'border-amber-700 text-amber-400 hover:bg-amber-900/30' },
-  { value: 3, label: 'Good', sub: 'few days', color: 'border-emerald-700 text-emerald-400 hover:bg-emerald-900/30' },
-  { value: 4, label: 'Easy', sub: 'week+', color: 'border-sky-700 text-sky-400 hover:bg-sky-900/30' },
+const RATINGS: Array<{ value: 1 | 2 | 3 | 4; label: string; sub: string; color: string; bg: string }> = [
+  { value: 1, label: 'Again', sub: '<1m',   color: 'var(--c-red)',    bg: 'color-mix(in srgb, var(--c-red) 10%, transparent)'    },
+  { value: 2, label: 'Hard',  sub: '<10m',  color: 'var(--c-amber)',  bg: 'color-mix(in srgb, var(--c-amber) 10%, transparent)'  },
+  { value: 3, label: 'Good',  sub: 'days',  color: 'var(--c-green)',  bg: 'color-mix(in srgb, var(--c-green) 10%, transparent)'  },
+  { value: 4, label: 'Easy',  sub: 'week+', color: 'var(--c-accent)', bg: 'color-mix(in srgb, var(--c-accent) 10%, transparent)' },
 ]
 
 function RatingButtons({ onRate }: { onRate: (r: 1 | 2 | 3 | 4) => void }) {
@@ -51,16 +51,23 @@ function RatingButtons({ onRate }: { onRate: (r: 1 | 2 | 3 | 4) => void }) {
   }, [])
 
   return (
-    <div className="flex gap-3 justify-center flex-wrap">
-      {RATINGS.map(ratingOption => (
+    <div style={{ display: 'flex', gap: 5 }}>
+      {RATINGS.map(r => (
         <button
-          key={ratingOption.value}
-          onClick={() => onRate(ratingOption.value)}
-          className={`flex flex-col items-center rounded border px-4 py-2 text-sm transition-colors ${ratingOption.color}`}
+          key={r.value}
+          onClick={() => onRate(r.value)}
+          style={{
+            flex: 1, padding: '7px 4px',
+            background: r.bg,
+            border: `1px solid color-mix(in srgb, ${r.color} 25%, transparent)`,
+            borderBottom: `2px solid color-mix(in srgb, ${r.color} 45%, transparent)`,
+            borderRadius: 5, color: r.color, fontFamily: 'inherit', cursor: 'pointer',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+          }}
         >
-          <span className="font-medium">{ratingOption.label}</span>
-          <span className="text-xs opacity-60">{ratingOption.sub}</span>
-          <span className="text-xs opacity-30 mt-0.5">[{ratingOption.value}]</span>
+          <span style={{ fontWeight: 500, fontSize: 11 }}>{r.label}</span>
+          <span style={{ fontSize: 9, opacity: 0.5 }}>{r.sub}</span>
+          <span style={{ fontSize: 8, opacity: 0.3 }}>[{r.value}]</span>
         </button>
       ))}
     </div>
@@ -69,19 +76,25 @@ function RatingButtons({ onRate }: { onRate: (r: 1 | 2 | 3 | 4) => void }) {
 
 // ─── Explanation toggle ───────────────────────────────────────────────────────
 
-/** Collapsible explanation panel shown after a card is revealed. Hidden by default. */
+/** Collapsible hint/explanation panel. Visible before and after answering. */
 function ExplanationToggle({ text }: { text: string }) {
   const [isVisible, setIsVisible] = useState(false)
   return (
-    <div className="flex flex-col gap-2">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <button
         onClick={() => setIsVisible(v => !v)}
-        className="self-start text-xs px-2 py-1 rounded border border-zinc-700 text-zinc-500 hover:text-zinc-300 hover:border-zinc-500 transition-colors"
+        style={{
+          alignSelf: 'flex-start', padding: '3px 8px', borderRadius: 3, fontSize: 10,
+          background: 'none', border: '1px solid var(--c-border)',
+          color: 'var(--c-text3)', fontFamily: 'inherit', cursor: 'pointer',
+        }}
       >
-        {isVisible ? 'Hide explanation' : 'Show explanation'}
+        {isVisible ? 'hide hint' : 'show hint'}
       </button>
       {isVisible && (
-        <p className="text-sm text-zinc-400 border-l-2 border-zinc-700 pl-3 leading-relaxed">{text}</p>
+        <div style={{ padding: '10px 12px', background: 'var(--c-raised)', borderLeft: '2px solid var(--c-text3)', borderRadius: '0 4px 4px 0', fontSize: 11, color: 'var(--c-text2)', lineHeight: 1.65 }}>
+          {text}
+        </div>
       )}
     </div>
   )
@@ -116,31 +129,42 @@ function MultipleChoiceRenderer({
   }, [isRevealed, card.options.length])
 
   return (
-    <div className="flex flex-col gap-6">
-      <p className="text-zinc-100 text-base leading-relaxed">{card.question}</p>
-      <ul className="flex flex-col gap-2">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <p style={{ fontSize: 13, color: 'var(--c-text)', lineHeight: 1.65 }}>{card.question}</p>
+      {card.explanation && <ExplanationToggle text={card.explanation} />}
+      <ul style={{ display: 'flex', flexDirection: 'column', gap: 5, listStyle: 'none', margin: 0, padding: 0 }}>
         {card.options.map((option, idx) => {
-          let style = 'border-zinc-700 text-zinc-300 hover:border-zinc-500'
-          if (isRevealed) {
-            if (idx === card.correctIndex) style = 'border-emerald-600 text-emerald-300 bg-emerald-950/40'
-            else if (idx === selected) style = 'border-red-700 text-red-300 bg-red-950/40'
-            else style = 'border-zinc-800 text-zinc-600'
-          }
+          const isCorrect = isRevealed && idx === card.correctIndex
+          const isWrong = isRevealed && idx === selected && selected !== card.correctIndex
+          const isDimmed = isRevealed && !isCorrect && !isWrong
           return (
             <li key={idx}>
               <button
                 onClick={() => handleSelect(idx)}
-                className={`w-full rounded border px-4 py-2 text-left text-sm transition-colors ${style}`}
+                style={{
+                  width: '100%', padding: '9px 12px', borderRadius: 5, textAlign: 'left',
+                  fontFamily: 'inherit', fontSize: 12, cursor: isRevealed ? 'default' : 'pointer',
+                  display: 'flex', gap: 10, alignItems: 'center', transition: 'all 150ms ease',
+                  background: isCorrect ? 'color-mix(in srgb, var(--c-green) 10%, transparent)'
+                             : isWrong  ? 'color-mix(in srgb, var(--c-red) 10%, transparent)'
+                             :             'var(--c-bg)',
+                  border: `1px solid ${isCorrect ? 'var(--c-green)' : isWrong ? 'var(--c-red)' : 'var(--c-border)'}`,
+                  color: isCorrect ? 'var(--c-green)' : isWrong ? 'var(--c-red)' : isDimmed ? 'var(--c-text3)' : 'var(--c-text2)',
+                }}
               >
-                <span className="opacity-40 mr-2 select-none">{idx + 1}.</span>{option}
+                <span style={{ fontSize: 9, padding: '2px 5px', borderRadius: 3, background: 'var(--c-raised)', border: '1px solid var(--c-border)', color: 'var(--c-text3)', flexShrink: 0, lineHeight: 1.5 }}>
+                  {idx + 1}
+                </span>
+                <span style={{ flex: 1 }}>{option}</span>
+                {isCorrect && <span style={{ fontSize: 10, opacity: 0.8 }}>✓</span>}
+                {isWrong   && <span style={{ fontSize: 10, opacity: 0.8 }}>✗</span>}
               </button>
             </li>
           )
         })}
       </ul>
       {isRevealed && (
-        <div role="status" className="flex flex-col gap-4">
-          {card.explanation && <ExplanationToggle text={card.explanation} />}
+        <div role="status">
           <RatingButtons onRate={rating => onComplete({ rating })} />
         </div>
       )}
@@ -173,31 +197,32 @@ function FillInBlankRenderer({
     card.acceptedAnswers.some(accepted => normalise(accepted) === normalise(answer))
 
   return (
-    <div className="flex flex-col gap-6">
-      <p className="text-zinc-100 text-base leading-relaxed">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <p style={{ fontSize: 13, color: 'var(--c-text)', lineHeight: 1.65 }}>
         {parts[0]}
         {!isRevealed ? (
-          <span className="inline-block border-b border-zinc-500 min-w-24 mx-1" />
+          <span style={{ display: 'inline-block', borderBottom: '1px solid var(--c-text3)', minWidth: 80, marginInline: 4 }} />
         ) : (
-          <span className={`mx-1 font-medium ${isCorrect ? 'text-emerald-400' : 'text-red-400'}`}>
+          <span style={{ marginInline: 4, fontWeight: 500, color: isCorrect ? 'var(--c-green)' : 'var(--c-red)' }}>
             {answer || '(blank)'}
           </span>
         )}
         {parts[1]}
       </p>
+      {card.explanation && <ExplanationToggle text={card.explanation} />}
       {!isRevealed ? (
-        <form onSubmit={handleReveal} className="flex gap-3">
+        <form onSubmit={handleReveal} style={{ display: 'flex', gap: 8 }}>
           <input
             autoFocus
             aria-label="Your answer"
             value={answer}
             onChange={e => setAnswer(e.target.value)}
-            className="flex-1 rounded border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-zinc-500"
+            style={{ flex: 1, borderRadius: 5, border: '1px solid var(--c-border)', background: 'var(--c-raised)', padding: '8px 12px', fontSize: 12, color: 'var(--c-text)', fontFamily: 'inherit' }}
             placeholder="Your answer…"
           />
           <button
             type="submit"
-            className="rounded border border-zinc-600 px-4 py-2 text-sm text-zinc-300 hover:border-zinc-400"
+            style={{ borderRadius: 5, border: '1px solid var(--c-border)', background: 'none', padding: '8px 14px', fontSize: 11, color: 'var(--c-text2)', fontFamily: 'inherit', cursor: 'pointer' }}
           >
             Check
           </button>
@@ -205,11 +230,10 @@ function FillInBlankRenderer({
       ) : (
         <>
           {!isCorrect && (
-            <p className="text-sm text-zinc-400">
+            <p style={{ fontSize: 11, color: 'var(--c-text3)' }}>
               Accepted: {card.acceptedAnswers.join(' / ')}
             </p>
           )}
-          {card.explanation && <ExplanationToggle text={card.explanation} />}
           <RatingButtons onRate={rating => onComplete({ rating })} />
         </>
       )}
@@ -229,20 +253,18 @@ function FreeTextRenderer({
   const [isRevealed, setIsRevealed] = useState(false)
 
   return (
-    <div className="flex flex-col gap-6">
-      <p className="text-zinc-100 text-base leading-relaxed">{card.question}</p>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <p style={{ fontSize: 13, color: 'var(--c-text)', lineHeight: 1.65 }}>{card.question}</p>
+      {card.explanation && <ExplanationToggle text={card.explanation} />}
       {!isRevealed ? (
         <button
           onClick={() => setIsRevealed(true)}
-          className="self-start rounded border border-zinc-600 px-4 py-2 text-sm text-zinc-300 hover:border-zinc-400"
+          style={{ alignSelf: 'flex-start', borderRadius: 5, border: '1px solid var(--c-border)', background: 'none', padding: '8px 14px', fontSize: 11, color: 'var(--c-text2)', fontFamily: 'inherit', cursor: 'pointer' }}
         >
           Show answer
         </button>
       ) : (
-        <>
-          {card.explanation && <ExplanationToggle text={card.explanation} />}
-          <RatingButtons onRate={rating => onComplete({ rating })} />
-        </>
+        <RatingButtons onRate={rating => onComplete({ rating })} />
       )}
     </div>
   )
@@ -461,6 +483,21 @@ function SandboxedBundleFrame({
 
 // ─── Engine ───────────────────────────────────────────────────────────────────
 
+// ─── Tag chip ─────────────────────────────────────────────────────────────────
+
+function Chip({ children }: { children: React.ReactNode }) {
+  return (
+    <span style={{
+      fontSize: 10, padding: '2px 7px', borderRadius: 3,
+      background: 'color-mix(in srgb, var(--c-accent) 12%, transparent)',
+      border: '1px solid color-mix(in srgb, var(--c-accent) 20%, transparent)',
+      color: 'var(--c-accent)',
+    }}>
+      {children}
+    </span>
+  )
+}
+
 export function LessonEngine({
   card,
   context,
@@ -473,21 +510,23 @@ export function LessonEngine({
     isTrustedSource ? componentBundleUrl : undefined,
   )
 
-  const header = (
-    <div className="flex flex-wrap gap-2 text-xs text-zinc-600">
-      <span>{context.title}</span>
-      {context.tags.map(tag => (
-        <span key={tag} className="rounded bg-zinc-800 px-2 py-0.5">#{tag}</span>
-      ))}
+  const titleBar = (
+    <div style={{ padding: '8px 12px', background: 'var(--c-raised)', borderBottom: '1px solid var(--c-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+      <span style={{ fontSize: 10, color: 'var(--c-text3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+        {context.title}
+      </span>
+      <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+        {context.tags.map(tag => <Chip key={tag}>{tag}</Chip>)}
+      </div>
     </div>
   )
 
   // Untrusted source with a bundle — run it isolated in a sandboxed iframe (D4).
   if (!isTrustedSource && componentBundleUrl) {
     return (
-      <div className="flex flex-col gap-4">
-        {header}
-        <div className="rounded border border-zinc-800 bg-zinc-900 p-6">
+      <div style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', borderRadius: 8, overflow: 'hidden' }}>
+        {titleBar}
+        <div style={{ padding: '18px 16px' }}>
           <SandboxedBundleFrame
             componentBundleUrl={componentBundleUrl}
             card={card}
@@ -502,19 +541,19 @@ export function LessonEngine({
 
   if (isLoadingBundle) {
     return (
-      <div className="flex flex-col gap-4">
-        {header}
-        <div className="rounded border border-zinc-800 bg-zinc-900 p-6">
-          <p className="text-zinc-500 text-sm">Loading renderer…</p>
+      <div style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', borderRadius: 8, overflow: 'hidden' }}>
+        {titleBar}
+        <div style={{ padding: '18px 16px' }}>
+          <p style={{ fontSize: 12, color: 'var(--c-text3)' }}>Loading renderer…</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      {header}
-      <div className="rounded border border-zinc-800 bg-zinc-900 p-6">
+    <div style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', borderRadius: 8, overflow: 'hidden' }}>
+      {titleBar}
+      <div style={{ padding: '18px 16px' }}>
         {CustomRenderer ? (
           <CustomRenderer card={card} context={context} onComplete={onComplete} />
         ) : (

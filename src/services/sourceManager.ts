@@ -254,32 +254,34 @@ async function upsertLessonWithCards(
   await LessonsRepo.upsert(lessonRow)
 
   const existingCards = await CardsRepo.getByLesson(sourceId, lessonJSON.lessonId)
-  const existingCardIds = new Set(existingCards.map(card => card.cardId))
+  const existingCardById = new Map(existingCards.map(card => [card.cardId, card]))
 
-  const newCardRows: CardRow[] = lessonJSON.cards
-    .filter(card => !existingCardIds.has(card.cardId))
-    .map(card => {
-      const initialState = createInitialCardState()
-      return {
-        sourceId,
-        lessonId: lessonJSON.lessonId,
-        cardId: card.cardId,
-        type: card.type,
-        data: card,
-        due: initialState.due.getTime(),
-        stability: initialState.stability,
-        difficulty: initialState.difficulty,
-        elapsedDays: initialState.elapsed_days,
-        scheduledDays: initialState.scheduled_days,
-        reps: initialState.reps,
-        lapses: initialState.lapses,
-        state: initialState.state as number,
-      }
-    })
+  // Always upsert all cards: refresh data/type for existing cards (preserving FSRS state),
+  // and initialise fresh state for new ones.
+  const cardRows: CardRow[] = lessonJSON.cards.map(card => {
+    const existing = existingCardById.get(card.cardId)
+    if (existing) {
+      return { ...existing, data: card, type: card.type }
+    }
+    const initialState = createInitialCardState()
+    return {
+      sourceId,
+      lessonId: lessonJSON.lessonId,
+      cardId: card.cardId,
+      type: card.type,
+      data: card,
+      due: initialState.due.getTime(),
+      stability: initialState.stability,
+      difficulty: initialState.difficulty,
+      elapsedDays: initialState.elapsed_days,
+      scheduledDays: initialState.scheduled_days,
+      reps: initialState.reps,
+      lapses: initialState.lapses,
+      state: initialState.state as number,
+    }
+  })
 
-  if (newCardRows.length > 0) {
-    await CardsRepo.upsertMany(newCardRows)
-  }
+  await CardsRepo.upsertMany(cardRows)
 }
 
 // Fetches a component bundle URL and stores it in the bundle Cache API entry.

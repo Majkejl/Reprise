@@ -7,7 +7,7 @@ import { getAllSources } from '@/services/sourceManager'
 import { useErrorStore, useUIStore } from '@/stores/uiStore'
 import type { SourceRow, SyncStatus } from '@/lib/types'
 
-const DAY_LABELS = ['Today', 'Tomorrow', 'Day 3', 'Day 4', 'Day 5', 'Day 6', 'Day 7']
+const DAY_LABELS = ['Today', 'Tmrw', 'Day 3', 'Day 4', 'Day 5', 'Day 6', 'Day 7']
 
 export function Dashboard() {
   const navigate = useNavigate()
@@ -40,23 +40,30 @@ export function Dashboard() {
   }, [scope, showError])
 
   return (
-    <div className="flex flex-col gap-8 px-4 py-8 max-w-lg mx-auto">
+    <div style={{ padding: '20px 16px', display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 512, margin: '0 auto' }}>
       <div>
-        <h1 className="text-2xl text-zinc-100 font-medium tracking-tight">Reprise</h1>
-        <p className="text-zinc-500 text-sm mt-1">Spaced-repetition exam revision</p>
+        <div style={{ fontSize: 20, color: 'var(--c-text)', fontWeight: 500, letterSpacing: '-0.01em' }}>Reprise</div>
+        <div style={{ fontSize: 11, color: 'var(--c-text3)', marginTop: 3 }}>spaced-repetition revision</div>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
-        <Stat label="Due now" value={dueCount} />
-        <Stat label="Sources" value={sources.length} />
-        <Stat label="Streak" value={streak} suffix={streak === 1 ? ' day' : ' days'} />
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+        <StatCard label="DUE NOW" value={dueCount} accentColor="var(--c-accent)" />
+        <StatCard label="SOURCES" value={sources.length} accentColor="var(--c-text3)" />
+        <StatCard label="STREAK" value={streak} suffix="d" accentColor="var(--c-amber)" />
       </div>
 
       <button
         onClick={() => navigate('/study')}
-        className="rounded border border-sky-700 bg-sky-950/40 px-6 py-3 text-sky-300 text-sm hover:bg-sky-900/40 transition-colors"
+        style={{
+          width: '100%', padding: '13px 16px',
+          background: 'var(--c-accent)', border: 'none', borderRadius: 6,
+          color: '#07090f', fontFamily: 'inherit', fontSize: 13, fontWeight: 500,
+          cursor: 'pointer', display: 'flex', alignItems: 'center',
+          justifyContent: 'space-between', letterSpacing: '0.01em',
+        }}
       >
-        Start study session →
+        <span>$ start study session</span>
+        <span style={{ opacity: 0.4, fontWeight: 300 }}>→</span>
       </button>
 
       {forecast && <DueForecast forecast={forecast} />}
@@ -70,22 +77,37 @@ export function Dashboard() {
 
 // ─── Sub-components ────────────────────────────────────────────────────────────
 
-function Stat({
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ fontSize: 10, color: 'var(--c-text3)', letterSpacing: '0.07em', marginBottom: 6, fontStyle: 'italic' }}>
+      {'// '}{children}
+    </div>
+  )
+}
+
+function StatCard({
   label,
   value,
-  suffix = '',
+  suffix,
+  accentColor,
 }: {
   label: string
   value: number | null
   suffix?: string
+  accentColor: string
 }) {
   return (
-    <div className="rounded border border-zinc-800 bg-zinc-900/50 px-4 py-3">
-      <div className="text-2xl text-zinc-100 font-medium">
+    <div style={{
+      background: 'var(--c-surface)', border: '1px solid var(--c-border)',
+      borderTop: `2px solid ${accentColor}`, borderRadius: 7, padding: '12px 14px',
+    }}>
+      <div style={{ fontSize: 26, fontWeight: 500, color: 'var(--c-text)', lineHeight: 1, display: 'flex', alignItems: 'baseline', gap: 3 }}>
         {value === null ? '—' : value}
-        {value !== null && suffix && <span className="text-sm text-zinc-500 font-normal">{suffix}</span>}
+        {value !== null && suffix && (
+          <span style={{ fontSize: 11, color: 'var(--c-text3)' }}>{suffix}</span>
+        )}
       </div>
-      <div className="text-xs text-zinc-500 mt-1">{label}</div>
+      <div style={{ fontSize: 9, color: 'var(--c-text3)', marginTop: 6, letterSpacing: '0.07em' }}>{label}</div>
     </div>
   )
 }
@@ -93,19 +115,25 @@ function Stat({
 function DueForecast({ forecast }: { forecast: number[] }) {
   const max = Math.max(...forecast, 1)
   return (
-    <div className="rounded border border-zinc-800 bg-zinc-900/50 px-4 py-3 flex flex-col gap-3">
-      <p className="text-xs text-zinc-500 font-medium">Due this week</p>
-      <div className="flex gap-1.5 items-end h-16">
+    <div style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', borderRadius: 7, padding: '14px 16px' }}>
+      <SectionLabel>DUE THIS WEEK</SectionLabel>
+      <div style={{ display: 'flex', gap: 5, alignItems: 'flex-end', height: 72, marginTop: 8 }}>
         {forecast.map((count, i) => {
-          const heightPct = Math.round((count / max) * 100)
+          const heightPct = Math.max((count / max) * 100, count > 0 ? 8 : 2)
+          const isToday = i === 0
           return (
-            <div key={i} className="flex-1 flex flex-col items-center gap-1">
-              <span className="text-[10px] text-zinc-500">{count > 0 ? count : ''}</span>
-              <div
-                className={`w-full rounded-sm ${i === 0 ? 'bg-sky-600' : 'bg-zinc-700'}`}
-                style={{ height: `${Math.max(heightPct, count > 0 ? 8 : 2)}%` }}
-              />
-              <span className="text-[9px] text-zinc-600 truncate w-full text-center">
+            <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, height: '100%', justifyContent: 'flex-end' }}>
+              {count > 0 && (
+                <span style={{ fontSize: 9, color: isToday ? 'var(--c-accent)' : 'var(--c-text3)' }}>{count}</span>
+              )}
+              <div style={{
+                width: '100%', borderRadius: '3px 3px 1px 1px',
+                background: isToday ? 'var(--c-accent)' : 'var(--c-raised)',
+                height: `${heightPct}%`, minHeight: 2,
+                border: `1px solid ${isToday ? 'color-mix(in srgb, var(--c-accent) 50%, transparent)' : 'var(--c-border)'}`,
+                boxShadow: isToday ? '0 0 10px color-mix(in srgb, var(--c-accent) 10%, transparent)' : 'none',
+              }} />
+              <span style={{ fontSize: 8, color: 'var(--c-text3)', width: '100%', textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {DAY_LABELS[i]}
               </span>
             </div>
@@ -124,14 +152,14 @@ function SourceHealthPanel({
   syncStatus: Record<string, SyncStatus>
 }) {
   return (
-    <div className="rounded border border-zinc-800 bg-zinc-900/50 px-4 py-3 flex flex-col gap-2">
-      <p className="text-xs text-zinc-500 font-medium">Source health</p>
-      <ul className="flex flex-col gap-1.5">
+    <div style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', borderRadius: 7, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <SectionLabel>SOURCE HEALTH</SectionLabel>
+      <ul style={{ display: 'flex', flexDirection: 'column', gap: 6, listStyle: 'none', margin: 0, padding: 0 }}>
         {sources.map(source => {
           const status = syncStatus[source.sourceId] ?? 'idle'
           return (
-            <li key={source.sourceId} className="flex items-center justify-between gap-4">
-              <span className="text-xs text-zinc-400 truncate">{source.label}</span>
+            <li key={source.sourceId} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 11, color: 'var(--c-text2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{source.label}</span>
               <SourceStatusIndicator source={source} status={status} />
             </li>
           )
@@ -142,14 +170,14 @@ function SourceHealthPanel({
 }
 
 function SourceStatusIndicator({ source, status }: { source: SourceRow; status: SyncStatus }) {
-  if (status === 'syncing') return <span className="text-xs text-sky-400 shrink-0">syncing…</span>
-  if (status === 'error') return <span className="text-xs text-red-400 shrink-0">error</span>
-  if (status === 'done') return <span className="text-xs text-emerald-400 shrink-0">up to date</span>
+  if (status === 'syncing') return <span style={{ fontSize: 10, color: 'var(--c-accent)', flexShrink: 0 }}>syncing…</span>
+  if (status === 'error') return <span style={{ fontSize: 10, color: 'var(--c-red)', flexShrink: 0 }}>error</span>
+  if (status === 'done') return <span style={{ fontSize: 10, color: 'var(--c-green)', flexShrink: 0 }}>● up to date</span>
 
   if (source.lastSynced !== undefined) {
     const date = new Date(source.lastSynced).toLocaleDateString()
-    return <span className="text-xs text-zinc-400 shrink-0">{date}</span>
+    return <span style={{ fontSize: 10, color: 'var(--c-green)', flexShrink: 0 }}>● {date}</span>
   }
 
-  return <span className="text-xs text-zinc-400 shrink-0">never synced</span>
+  return <span style={{ fontSize: 10, color: 'var(--c-text3)', flexShrink: 0 }}>never synced</span>
 }

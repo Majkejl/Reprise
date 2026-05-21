@@ -6,6 +6,15 @@ import { SettingsRepo } from '@/db'
 import { useErrorStore } from '@/stores/uiStore'
 import { DEFAULT_SESSION_CAP } from '@/lib/types'
 
+const sectionLabelStyle: React.CSSProperties = {
+  fontSize: 10, color: 'var(--c-text3)', letterSpacing: '0.07em', fontStyle: 'italic', marginBottom: 8,
+}
+
+const secondaryButtonStyle: React.CSSProperties = {
+  background: 'none', border: '1px solid var(--c-border)', borderRadius: 4,
+  color: 'var(--c-text2)', fontSize: 10, fontFamily: 'inherit', cursor: 'pointer', padding: '6px 12px',
+}
+
 export function Settings() {
   const [sessionCap, setSessionCap] = useState<number>(DEFAULT_SESSION_CAP)
   const [isImporting, setIsImporting] = useState(false)
@@ -93,66 +102,80 @@ export function Settings() {
   }
 
   return (
-    <div className="px-4 py-8 max-w-lg mx-auto flex flex-col gap-10">
-      <h1 className="text-xl text-zinc-100 font-medium tracking-tight">Settings</h1>
+    <div style={{ padding: '20px 16px', display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 512, margin: '0 auto' }}>
+      <h1 style={{ fontSize: 16, color: 'var(--c-text)', fontWeight: 500 }}>Settings</h1>
 
-      <section className="flex flex-col gap-4">
-        <p className="text-xs text-zinc-400 font-medium">Session</p>
-        <div className="flex items-center gap-4">
-          <label htmlFor="session-cap" className="text-sm text-zinc-300 w-40">Cards per session</label>
-          <input
-            id="session-cap"
-            type="number"
-            min={1}
-            max={200}
-            value={sessionCap}
-            onChange={e => handleSessionCapChange(Number(e.target.value))}
-            className="rounded border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm text-zinc-200 w-20 focus:outline-none focus:border-zinc-500"
-          />
-        </div>
-      </section>
-
-      <section className="flex flex-col gap-4">
-        <p className="text-xs text-zinc-400 font-medium">Export</p>
-        <div className="flex flex-col gap-2">
-          <ExportButton label="Full export" description="All lessons, progress, history" onClick={handleExportFull} />
-          <ExportButton label="Progress only" description="Card states + settings, no lesson content" onClick={handleExportProgress} />
-        </div>
-      </section>
-
-      <section className="flex flex-col gap-4">
-        <p className="text-xs text-zinc-400 font-medium">Import</p>
-        {importSuccessMessage && (
-          <p className="text-xs text-emerald-400">{importSuccessMessage}</p>
-        )}
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-col gap-1">
-            <p className="text-sm text-zinc-300">Restore a backup</p>
-            <p className="text-xs text-zinc-600">Merges with existing data. Imported records win on conflict.</p>
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isImporting}
-              className="self-start mt-1 text-xs px-3 py-1.5 rounded border border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:border-zinc-500 disabled:opacity-40 transition-colors"
-            >
-              {isImporting ? 'Importing…' : 'Choose backup file…'}
-            </button>
-            <input ref={fileInputRef} type="file" accept=".json" className="hidden" onChange={handleImportFile} />
-          </div>
-
-          <div className="flex flex-col gap-1 pt-3 border-t border-zinc-800">
-            <p className="text-sm text-zinc-300">Import a lesson</p>
-            <p className="text-xs text-zinc-600">Load a single lesson JSON file for local study.</p>
-            <button
-              onClick={() => lessonFileInputRef.current?.click()}
-              disabled={isImporting}
-              className="self-start mt-1 text-xs px-3 py-1.5 rounded border border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:border-zinc-500 disabled:opacity-40 transition-colors"
-            >
-              {isImporting ? 'Importing…' : 'Choose lesson file…'}
-            </button>
-            <input ref={lessonFileInputRef} type="file" accept=".json" className="hidden" onChange={handleImportLesson} />
+      {/* Session */}
+      <div style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', borderRadius: 7, overflow: 'hidden' }}>
+        <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--c-border)' }}>
+          <div style={sectionLabelStyle}>// SESSION</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ fontSize: 12, color: 'var(--c-text)' }}>Cards per session</div>
+              <div style={{ fontSize: 10, color: 'var(--c-text3)', marginTop: 3, lineHeight: 1.4 }}>Max cards shown per study session</div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button
+                onClick={() => handleSessionCapChange(sessionCap - 5)}
+                style={{ width: 22, height: 22, borderRadius: 4, background: 'var(--c-raised)', border: '1px solid var(--c-border)', color: 'var(--c-text2)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >−</button>
+              <span style={{ fontSize: 12, color: 'var(--c-text)', minWidth: 28, textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>{sessionCap}</span>
+              <button
+                onClick={() => handleSessionCapChange(sessionCap + 5)}
+                style={{ width: 22, height: 22, borderRadius: 4, background: 'var(--c-raised)', border: '1px solid var(--c-border)', color: 'var(--c-text2)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >+</button>
+            </div>
           </div>
         </div>
-      </section>
+      </div>
+
+      {/* Export */}
+      <div style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', borderRadius: 7, overflow: 'hidden' }}>
+        <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--c-border)' }}>
+          <div style={sectionLabelStyle}>// EXPORT</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <ExportButton label="Full export" description="All lessons, progress, history" onClick={handleExportFull} />
+            <ExportButton label="Progress only" description="Card states + settings, no lesson content" onClick={handleExportProgress} />
+          </div>
+        </div>
+      </div>
+
+      {/* Import */}
+      <div style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', borderRadius: 7, overflow: 'hidden' }}>
+        <div style={{ padding: '12px 16px' }}>
+          <div style={sectionLabelStyle}>// IMPORT</div>
+          {importSuccessMessage && (
+            <p style={{ fontSize: 11, color: 'var(--c-green)', marginBottom: 10 }}>{importSuccessMessage}</p>
+          )}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div style={{ fontSize: 12, color: 'var(--c-text)' }}>Restore a backup</div>
+              <div style={{ fontSize: 10, color: 'var(--c-text3)', lineHeight: 1.4 }}>Merges with existing data. Imported records win on conflict.</div>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isImporting}
+                style={{ ...secondaryButtonStyle, alignSelf: 'flex-start', marginTop: 4, opacity: isImporting ? 0.4 : 1 }}
+              >
+                {isImporting ? 'Importing…' : 'Choose backup file…'}
+              </button>
+              <input ref={fileInputRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleImportFile} />
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, paddingTop: 10, borderTop: '1px solid var(--c-border)' }}>
+              <div style={{ fontSize: 12, color: 'var(--c-text)' }}>Import a lesson</div>
+              <div style={{ fontSize: 10, color: 'var(--c-text3)', lineHeight: 1.4 }}>Load a single lesson JSON file for local study.</div>
+              <button
+                onClick={() => lessonFileInputRef.current?.click()}
+                disabled={isImporting}
+                style={{ ...secondaryButtonStyle, alignSelf: 'flex-start', marginTop: 4, opacity: isImporting ? 0.4 : 1 }}
+              >
+                {isImporting ? 'Importing…' : 'Choose lesson file…'}
+              </button>
+              <input ref={lessonFileInputRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleImportLesson} />
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
@@ -171,13 +194,17 @@ function ExportButton({
   return (
     <button
       onClick={onClick}
-      className="flex items-center justify-between rounded border border-zinc-800 bg-zinc-900/50 px-4 py-3 text-left hover:border-zinc-600 transition-colors group"
+      style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        background: 'var(--c-raised)', border: '1px solid var(--c-border)', borderRadius: 5,
+        padding: '10px 12px', textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit', width: '100%',
+      }}
     >
       <div>
-        <p className="text-sm text-zinc-300 group-hover:text-zinc-100 transition-colors">{label}</p>
-        <p className="text-xs text-zinc-600 mt-0.5">{description}</p>
+        <div style={{ fontSize: 12, color: 'var(--c-text)' }}>{label}</div>
+        <div style={{ fontSize: 10, color: 'var(--c-text3)', marginTop: 2 }}>{description}</div>
       </div>
-      <span className="text-zinc-600 text-xs group-hover:text-zinc-400 transition-colors">↓</span>
+      <span style={{ fontSize: 11, color: 'var(--c-text3)' }}>↓</span>
     </button>
   )
 }

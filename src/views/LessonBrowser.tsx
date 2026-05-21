@@ -9,6 +9,18 @@ import { useErrorStore } from '@/stores/uiStore'
 import { useSessionStore } from '@/stores/sessionStore'
 import type { LessonRow, SourceRow } from '@/lib/types'
 
+// Category → accent color mapping (mirrors design tokens for left border)
+const CAT_COLORS: Record<string, string> = {
+  algorithms:        'var(--c-accent)',
+  'data-structures': 'var(--c-green)',
+  complexity:        'var(--c-purple)',
+  trees:             'var(--c-amber)',
+  graphs:            'var(--c-purple)',
+  dp:                'var(--c-amber)',
+  heaps:             'var(--c-green)',
+  IB031:             'var(--c-accent)',
+}
+
 export function LessonBrowser() {
   const navigate = useNavigate()
   const [lessons, setLessons] = useState<LessonRow[]>([])
@@ -58,7 +70,6 @@ export function LessonBrowser() {
     }
   }
 
-  // Derive available categories from currently visible lessons.
   const availableCategories = Array.from(
     new Set(lessons.map(l => l.category).filter((c): c is string => !!c)),
   ).sort()
@@ -69,54 +80,57 @@ export function LessonBrowser() {
     if (selectedSourceId !== 'all' && lesson.sourceId !== selectedSourceId) return false
     if (selectedCategory !== 'all' && lesson.category !== selectedCategory) return false
     if (selectedTag !== 'all') {
-      // Support prefix matching: "mathematics" matches "mathematics/algebra", "mathematics/calculus", etc.
-      const matchesTag = lesson.tags.some(
-        t => t === selectedTag || t.startsWith(selectedTag + '/'),
-      )
+      const matchesTag = lesson.tags.some(t => t === selectedTag || t.startsWith(selectedTag + '/'))
       if (!matchesTag) return false
     }
     return true
   })
 
-  return (
-    <div className="px-4 py-8 max-w-lg mx-auto flex flex-col gap-6">
-      <h1 className="text-xl text-zinc-100 font-medium tracking-tight">Lessons</h1>
+  const sourceOptions = [
+    { value: 'all', label: 'all sources' },
+    ...sources.map(s => ({ value: s.sourceId, label: s.label })),
+  ]
+  const categoryOptions = [
+    { value: 'all', label: 'all' },
+    ...availableCategories.map(c => ({ value: c, label: c })),
+  ]
 
-      <div className="flex gap-3 flex-wrap">
-        <FilterSelect
-          label="Source"
-          value={selectedSourceId}
-          onChange={setSelectedSourceId}
-          options={[
-            { value: 'all', label: 'All sources' },
-            ...sources.map(s => ({ value: s.sourceId, label: s.label })),
-          ]}
+  return (
+    <div style={{ padding: '20px 16px', display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 512, margin: '0 auto' }}>
+      <h1 style={{ fontSize: 16, color: 'var(--c-text)', fontWeight: 500 }}>Lessons</h1>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {/* Source chips */}
+        <ChipFilterGroup
+          options={sourceOptions}
+          selected={selectedSourceId}
+          onSelect={setSelectedSourceId}
         />
+        {/* Category chips */}
         {availableCategories.length > 0 && (
-          <FilterSelect
-            label="Category"
-            value={selectedCategory}
-            onChange={setSelectedCategory}
-            options={[
-              { value: 'all', label: 'All categories' },
-              ...availableCategories.map(c => ({ value: c, label: c })),
-            ]}
+          <ChipFilterGroup
+            options={categoryOptions}
+            selected={selectedCategory}
+            onSelect={setSelectedCategory}
           />
         )}
-        <TagFilterSelect
-          value={selectedTag}
-          onChange={setSelectedTag}
-          flatTags={flatTags}
-          tagGroups={tagGroups}
-        />
+        {/* Tag select (can be many) */}
+        {allTags.length > 0 && (
+          <TagFilterSelect
+            value={selectedTag}
+            onChange={setSelectedTag}
+            flatTags={flatTags}
+            tagGroups={tagGroups}
+          />
+        )}
       </div>
 
       {filteredLessons.length === 0 ? (
-        <p className="text-zinc-500 text-sm">
+        <p style={{ fontSize: 12, color: 'var(--c-text3)' }}>
           {lessons.length === 0 ? 'No lessons synced yet. Go to Sources to sync.' : 'No lessons match the current filters.'}
         </p>
       ) : (
-        <ul className="flex flex-col gap-2">
+        <ul style={{ display: 'flex', flexDirection: 'column', gap: 5, listStyle: 'none', margin: 0, padding: 0 }}>
           {filteredLessons.map(lesson => (
             <LessonCard
               key={`${lesson.sourceId}|${lesson.lessonId}`}
@@ -160,6 +174,39 @@ function buildTagGroups(tags: string[]): { flatTags: string[]; tagGroups: TagGro
 
 // ─── Sub-components ────────────────────────────────────────────────────────────
 
+function ChipFilterGroup({
+  options,
+  selected,
+  onSelect,
+}: {
+  options: Array<{ value: string; label: string }>
+  selected: string
+  onSelect: (value: string) => void
+}) {
+  return (
+    <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+      {options.map(opt => {
+        const isActive = opt.value === selected
+        return (
+          <button
+            key={opt.value}
+            onClick={() => onSelect(opt.value)}
+            style={{
+              padding: '4px 10px', borderRadius: 4, fontFamily: 'inherit', fontSize: 10,
+              border: `1px solid ${isActive ? 'var(--c-accent)' : 'var(--c-border)'}`,
+              background: isActive ? 'color-mix(in srgb, var(--c-accent) 10%, transparent)' : 'var(--c-raised)',
+              color: isActive ? 'var(--c-accent)' : 'var(--c-text2)',
+              cursor: 'pointer', transition: 'all 120ms',
+            }}
+          >
+            {opt.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 interface LessonCardProps {
   lesson: LessonRow
   onStudy: (sourceId: string, lessonId: string) => void
@@ -167,21 +214,19 @@ interface LessonCardProps {
 }
 
 function LessonCard({ lesson, onStudy, onDelete }: LessonCardProps) {
+  const accentColor = CAT_COLORS[lesson.category ?? ''] ?? CAT_COLORS[lesson.tags[0]] ?? 'var(--c-text3)'
   return (
-    <li className="flex items-stretch rounded border border-zinc-800 bg-zinc-900/50 hover:border-zinc-600 transition-colors">
+    <li style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', borderLeft: `3px solid ${accentColor}`, borderRadius: 7, display: 'flex', alignItems: 'stretch' }}>
       <Link
         to={`/lessons/${encodeURIComponent(lesson.sourceId)}/${encodeURIComponent(lesson.lessonId)}`}
-        className="flex-1 px-4 py-3"
+        style={{ flex: 1, padding: '10px 12px', textDecoration: 'none' }}
       >
-        <div className="text-sm text-zinc-200">{lesson.title}</div>
+        <div style={{ fontSize: 12, color: 'var(--c-text)', lineHeight: 1.4 }}>{lesson.title}</div>
         {lesson.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-1.5">
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
             {lesson.tags.map(tag => (
-              <span
-                key={tag}
-                className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-500"
-              >
-                {tag.replace(/\//g, ' › ')}
+              <span key={tag} style={{ fontSize: 10, padding: '2px 6px', borderRadius: 3, background: 'var(--c-raised)', border: '1px solid var(--c-border)', color: 'var(--c-text3)', letterSpacing: '0.02em' }}>
+                #{tag.replace(/\//g, ' › ')}
               </span>
             ))}
           </div>
@@ -190,47 +235,19 @@ function LessonCard({ lesson, onStudy, onDelete }: LessonCardProps) {
       <button
         onClick={() => onStudy(lesson.sourceId, lesson.lessonId)}
         aria-label={`Study ${lesson.title}`}
-        className="px-3 text-zinc-600 hover:text-sky-400 transition-colors border-l border-zinc-800 text-xs"
         title="Study this lesson"
+        style={{ padding: '0 12px', background: 'none', border: 'none', borderLeft: '1px solid var(--c-border)', color: 'var(--c-text3)', cursor: 'pointer', fontSize: 11, fontFamily: 'inherit' }}
       >
         ▶
       </button>
       <button
         onClick={() => onDelete(lesson.sourceId, lesson.lessonId)}
         aria-label={`Delete ${lesson.title}`}
-        className="px-3 text-zinc-600 hover:text-red-400 transition-colors border-l border-zinc-800"
+        style={{ padding: '0 10px', background: 'none', border: 'none', borderLeft: '1px solid var(--c-border)', color: 'var(--c-text3)', cursor: 'pointer', fontSize: 11, fontFamily: 'inherit' }}
       >
         ✕
       </button>
     </li>
-  )
-}
-
-interface FilterSelectProps {
-  label: string
-  value: string
-  onChange: (value: string) => void
-  options: Array<{ value: string; label: string }>
-}
-
-function FilterSelect({ label, value, onChange, options }: FilterSelectProps) {
-  const id = `filter-${label.toLowerCase()}`
-  return (
-    <div className="flex items-center gap-2">
-      <label htmlFor={id} className="text-xs text-zinc-500 shrink-0">{label}</label>
-      <select
-        id={id}
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        className="rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-xs text-zinc-300 focus:outline-none focus:border-zinc-500"
-      >
-        {options.map(opt => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
-    </div>
   )
 }
 
@@ -243,25 +260,22 @@ interface TagFilterSelectProps {
 
 function TagFilterSelect({ value, onChange, flatTags, tagGroups }: TagFilterSelectProps) {
   return (
-    <div className="flex items-center gap-2">
-      <label htmlFor="filter-tag" className="text-xs text-zinc-500 shrink-0">Tag</label>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+      <span style={{ fontSize: 10, color: 'var(--c-text3)' }}>tag</span>
       <select
-        id="filter-tag"
         value={value}
         onChange={e => onChange(e.target.value)}
-        className="rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-xs text-zinc-300 focus:outline-none focus:border-zinc-500"
+        style={{ padding: '4px 8px', borderRadius: 4, fontFamily: 'inherit', fontSize: 10, border: '1px solid var(--c-border)', background: 'var(--c-raised)', color: 'var(--c-text2)', cursor: 'pointer', outline: 'none' }}
       >
-        <option value="all">All tags</option>
+        <option value="all">all tags</option>
         {flatTags.map(tag => (
           <option key={tag} value={tag}>{tag}</option>
         ))}
         {tagGroups.map(group => (
           <optgroup key={group.prefix} label={group.prefix}>
-            <option value={group.prefix}>All {group.prefix}</option>
+            <option value={group.prefix}>all {group.prefix}</option>
             {group.tags.map(tag => (
-              <option key={tag} value={tag}>
-                {tag.slice(group.prefix.length + 1)}
-              </option>
+              <option key={tag} value={tag}>{tag.slice(group.prefix.length + 1)}</option>
             ))}
           </optgroup>
         ))}

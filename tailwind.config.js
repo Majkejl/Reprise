@@ -4,7 +4,7 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        mono: ["'DM Mono'", "'Fira Mono'", 'ui-monospace', 'monospace'],
+        mono: ["'JetBrains Mono'", "'DM Mono'", 'ui-monospace', 'monospace'],
       },
     },
   },

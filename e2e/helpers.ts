@@ -74,13 +74,18 @@ export async function answerCardGood(page: Page): Promise<void> {
   // or() creates a union locator — resolves as soon as any one element is visible.
   await mcFirst.or(fibInput).or(showAnswer).waitFor({ state: 'visible', timeout: 10000 })
 
-  // isVisible() is an immediate check (no waiting) — safe after the waitFor above.
-  if (await mcFirst.isVisible()) {
+  // Re-evaluate visibility in parallel to avoid the race where the union waitFor resolves
+  // on one element but it disappears before the isVisible() call below.
+  const [isMC, isFIB] = await Promise.all([mcFirst.isVisible(), fibInput.isVisible()])
+
+  if (isMC) {
     await mcFirst.click()
-  } else if (await fibInput.isVisible()) {
+  } else if (isFIB) {
     await fibInput.fill('yes')
     await page.getByRole('button', { name: /^check$/i }).click()
   } else {
+    // Free-text card: wait explicitly for showAnswer in case it is mid-render.
+    await showAnswer.waitFor({ state: 'visible', timeout: 5000 })
     await showAnswer.click()
   }
 

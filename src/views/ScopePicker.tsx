@@ -141,6 +141,7 @@ export function ScopePicker() {
       <section aria-labelledby="scope-tags-heading" style={{ marginTop: 14 }}>
         <button
           id="scope-tags-heading"
+          aria-label="Tags"
           onClick={() => setIsTagsExpanded(v => !v)}
           aria-expanded={isTagsExpanded}
           style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', width: '100%', textAlign: 'left', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}

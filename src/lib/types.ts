@@ -49,7 +49,8 @@ export interface LessonJSON {
   creator?: string
   sources?: LessonSource[]
   cards: LessonCard[]
-  componentBundleRef?: string
+  // D1: ES module URL pointing to the lesson's custom renderer bundle
+  componentBundleUrl?: string
 }
 
 // ─── DB row types ─────────────────────────────────────────────────────────────
@@ -63,7 +64,7 @@ export interface LessonRow {
   tags: string[]
   creator?: string
   sources: LessonSource[]
-  componentBundleRef?: string
+  componentBundleUrl?: string
 }
 
 export interface CardRow {
@@ -115,6 +116,10 @@ export type SyncStatus = 'idle' | 'syncing' | 'error' | 'done'
 export type SettingsKey = 'scope' | 'sessionCap' | 'queuePriority'
 
 export type QueuePriority = 'reviews-first' | 'balanced' | 'new-first'
+
+// Cache name for component bundles — used by Source Manager (write) and Lesson Engine (read).
+// Convention defined in D1; must match in both places.
+export const BUNDLE_CACHE_NAME = 'reprise-bundles'
 
 export const DEFAULT_SESSION_CAP = 20
 export const DEFAULT_QUEUE_PRIORITY: QueuePriority = 'reviews-first'

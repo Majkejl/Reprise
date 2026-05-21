@@ -4,6 +4,7 @@
 import { LessonsRepo, CardsRepo, SourcesRepo } from '@/db'
 import { createInitialCardState } from './fsrsService'
 import type { LessonJSON, LessonRow, CardRow, SourceRow } from '@/lib/types'
+import { BUNDLE_CACHE_NAME } from '@/lib/types'
 
 // DECISION: stable identifier for the first-party lesson source row in SourcesRepo.
 export const OFFICIAL_SOURCE_ID = 'reprise-official'
@@ -89,6 +90,14 @@ export async function syncSource(
         throw new Error(`Failed to fetch lesson "${entry.lessonId}" (HTTP ${lessonResponse.status})`)
       }
       const lessonJSON: LessonJSON = await lessonResponse.json() as LessonJSON
+
+      if (lessonJSON.componentBundleUrl) {
+        const resolvedBundleUrl = resolveUrl(source.url, lessonJSON.componentBundleUrl)
+        await cacheBundleIfNeeded(resolvedBundleUrl)
+        // Store the resolved absolute URL so the engine can look it up by key
+        lessonJSON.componentBundleUrl = resolvedBundleUrl
+      }
+
       await upsertLessonWithCards(sourceId, lessonJSON)
     }
 
@@ -168,8 +177,7 @@ async function upsertLessonWithCards(sourceId: string, lessonJSON: LessonJSON): 
     tags: lessonJSON.tags.map(normalizeTag),
     creator: lessonJSON.creator,
     sources: lessonJSON.sources ?? [],
-    // DEFERRED (Phase 4): fetch and cache component bundle from lessonJSON.componentBundleRef
-    componentBundleRef: undefined,
+    componentBundleUrl: lessonJSON.componentBundleUrl,
   }
 
   await LessonsRepo.upsert(lessonRow)
@@ -201,6 +209,20 @@ async function upsertLessonWithCards(sourceId: string, lessonJSON: LessonJSON): 
   if (newCardRows.length > 0) {
     await CardsRepo.upsertMany(newCardRows)
   }
+}
+
+// Fetches a component bundle URL and stores it in the bundle Cache API entry.
+// Skips silently if already cached. The cache key is the resolved absolute URL (D1).
+async function cacheBundleIfNeeded(bundleUrl: string): Promise<void> {
+  const cache = await caches.open(BUNDLE_CACHE_NAME)
+  const existing = await cache.match(bundleUrl)
+  if (existing) return
+
+  const response = await fetch(bundleUrl)
+  if (!response.ok) {
+    throw new Error(`Failed to fetch component bundle (HTTP ${response.status}): ${bundleUrl}`)
+  }
+  await cache.put(bundleUrl, response)
 }
 
 function isSourceIndexJSON(value: unknown): value is SourceIndexJSON {

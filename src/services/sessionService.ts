@@ -50,7 +50,7 @@ export async function startSession(scope: Scope): Promise<QueueItem[]> {
  */
 export async function getCardAndContext(
   item: QueueItem,
-): Promise<{ card: LessonCard; cardRow: CardRow; context: LessonContext } | null> {
+): Promise<{ card: LessonCard; cardRow: CardRow; context: LessonContext; componentBundleUrl?: string } | null> {
   const [cardRow, lesson] = await Promise.all([
     CardsRepo.get(item.sourceId, item.lessonId, item.cardId),
     LessonsRepo.get(item.sourceId, item.lessonId),
@@ -64,7 +64,7 @@ export async function getCardAndContext(
     sources: lesson.sources,
   }
 
-  return { card: cardRow.data, cardRow, context }
+  return { card: cardRow.data, cardRow, context, componentBundleUrl: lesson.componentBundleUrl }
 }
 
 /**

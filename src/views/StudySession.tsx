@@ -32,6 +32,7 @@ export function StudySession() {
     card: LessonCard
     cardRow: CardRow
     context: LessonContext
+    componentBundleUrl?: string
   } | null>(null)
 
   useEffect(() => {
@@ -129,6 +130,7 @@ export function StudySession() {
           key={`${currentItem?.sourceId}|${currentItem?.lessonId}|${currentItem?.cardId}`}
           card={cardData.card}
           context={cardData.context}
+          componentBundleUrl={cardData.componentBundleUrl}
           onComplete={handleComplete}
         />
       ) : (

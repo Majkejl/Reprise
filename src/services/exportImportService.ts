@@ -134,8 +134,9 @@ export async function importLocalLesson(jsonText: string): Promise<void> {
     tags: lessonJSON.tags.map(normalizeTag),
     creator: lessonJSON.creator,
     sources: lessonJSON.sources ?? [],
-    // DEFERRED (Phase 4): custom component bundle support for locally imported lessons
-    componentBundleRef: undefined,
+    // DEFERRED (Phase 4): locally imported lessons preserve the bundle URL from the JSON,
+    // but the bundle won't be pre-cached. The engine will fall back to the default renderer.
+    componentBundleUrl: lessonJSON.componentBundleUrl,
   }
 
   await LessonsRepo.upsert(lessonRow)

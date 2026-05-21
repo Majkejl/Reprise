@@ -1,12 +1,23 @@
 // LessonEngine.tsx — isolated card renderer. No knowledge of FSRS, sessions, or the DB.
 // Receives one card + lesson context; fires onComplete when the user submits a self-rating.
+// Dynamically loads custom renderer bundles if the lesson declares one (D1).
 
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import type { LessonCard, LessonContext, MultipleChoiceCard, FillInBlankCard, FreeTextCard } from '@/lib/types'
+import { BUNDLE_CACHE_NAME } from '@/lib/types'
+
+/** Contract that a custom renderer bundle's default export must satisfy. */
+interface CustomRendererProps {
+  card: LessonCard
+  context: LessonContext
+  onComplete: (result: { rating: 1 | 2 | 3 | 4 }) => void
+}
 
 interface LessonEngineProps {
   card: LessonCard
   context: LessonContext
+  /** Absolute URL to a pre-cached ES module exporting a default React component (D1). */
+  componentBundleUrl?: string
   onComplete: (result: { rating: 1 | 2 | 3 | 4 }) => void
 }
 
@@ -191,27 +202,118 @@ function FreeTextRenderer({
   )
 }
 
+// ─── Custom bundle loader ─────────────────────────────────────────────────────
+
+/**
+ * Loads a custom renderer from the bundle cache (populated by Source Manager during sync).
+ * Falls back to returning null — caller renders the default renderer instead.
+ */
+function useCustomRenderer(componentBundleUrl: string | undefined): {
+  CustomRenderer: React.ComponentType<CustomRendererProps> | null
+  isLoadingBundle: boolean
+} {
+  const [CustomRenderer, setCustomRenderer] = useState<React.ComponentType<CustomRendererProps> | null>(null)
+  const [isLoadingBundle, setIsLoadingBundle] = useState(!!componentBundleUrl)
+  const objectUrlRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (!componentBundleUrl) {
+      setIsLoadingBundle(false)
+      return
+    }
+
+    setIsLoadingBundle(true)
+    let cancelled = false
+
+    async function loadBundle() {
+      try {
+        const cache = await caches.open(BUNDLE_CACHE_NAME)
+        const cachedResponse = await cache.match(componentBundleUrl!)
+        if (!cachedResponse || cancelled) {
+          // Cache miss — bundle wasn't pre-fetched during sync; use default renderer
+          if (!cancelled) setIsLoadingBundle(false)
+          return
+        }
+
+        const blob = await cachedResponse.blob()
+        if (cancelled) return
+
+        const objectUrl = URL.createObjectURL(blob)
+        objectUrlRef.current = objectUrl
+
+        // @vite-ignore: object URL cannot be statically analyzed — intentional dynamic import
+        const mod = await import(/* @vite-ignore */ objectUrl) as { default?: React.ComponentType<CustomRendererProps> }
+        if (cancelled) return
+
+        if (typeof mod.default === 'function') {
+          setCustomRenderer(() => mod.default as React.ComponentType<CustomRendererProps>)
+        } else {
+          console.warn('[LessonEngine] Custom bundle did not export a default React component; using default renderer')
+        }
+      } catch (error) {
+        if (!cancelled) console.warn('[LessonEngine] Failed to load custom renderer bundle:', error)
+      } finally {
+        if (!cancelled) setIsLoadingBundle(false)
+      }
+    }
+
+    void loadBundle()
+
+    return () => {
+      cancelled = true
+      if (objectUrlRef.current) {
+        URL.revokeObjectURL(objectUrlRef.current)
+        objectUrlRef.current = null
+      }
+    }
+  }, [componentBundleUrl])
+
+  return { CustomRenderer, isLoadingBundle }
+}
+
 // ─── Engine ───────────────────────────────────────────────────────────────────
 
-export function LessonEngine({ card, context, onComplete }: LessonEngineProps) {
-  // DEFERRED (Phase 4): custom component bundle resolution — always falls back to the default renderer
+export function LessonEngine({ card, context, componentBundleUrl, onComplete }: LessonEngineProps) {
+  const { CustomRenderer, isLoadingBundle } = useCustomRenderer(componentBundleUrl)
+
+  const header = (
+    <div className="flex flex-wrap gap-2 text-xs text-zinc-600">
+      <span>{context.title}</span>
+      {context.tags.map(tag => (
+        <span key={tag} className="rounded bg-zinc-800 px-2 py-0.5">#{tag}</span>
+      ))}
+    </div>
+  )
+
+  if (isLoadingBundle) {
+    return (
+      <div className="flex flex-col gap-4">
+        {header}
+        <div className="rounded border border-zinc-800 bg-zinc-900 p-6">
+          <p className="text-zinc-500 text-sm">Loading renderer…</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap gap-2 text-xs text-zinc-600">
-        <span>{context.title}</span>
-        {context.tags.map(tag => (
-          <span key={tag} className="rounded bg-zinc-800 px-2 py-0.5">#{tag}</span>
-        ))}
-      </div>
+      {header}
       <div className="rounded border border-zinc-800 bg-zinc-900 p-6">
-        {card.type === 'multiple-choice' && (
-          <MultipleChoiceRenderer card={card} onComplete={onComplete} />
-        )}
-        {card.type === 'fill-in-blank' && (
-          <FillInBlankRenderer card={card} onComplete={onComplete} />
-        )}
-        {card.type === 'free-text' && (
-          <FreeTextRenderer card={card} onComplete={onComplete} />
+        {CustomRenderer ? (
+          <CustomRenderer card={card} context={context} onComplete={onComplete} />
+        ) : (
+          <>
+            {card.type === 'multiple-choice' && (
+              <MultipleChoiceRenderer card={card} onComplete={onComplete} />
+            )}
+            {card.type === 'fill-in-blank' && (
+              <FillInBlankRenderer card={card} onComplete={onComplete} />
+            )}
+            {card.type === 'free-text' && (
+              <FreeTextRenderer card={card} onComplete={onComplete} />
+            )}
+          </>
         )}
       </div>
     </div>

@@ -52,3 +52,16 @@ export async function getAllTags(): Promise<string[]> {
   }
   return Array.from(tagSet).sort()
 }
+
+/**
+ * Returns the sorted list of unique category values for a given source.
+ * Only lessons that were synced with a category field are included.
+ */
+export async function getCategoriesForSource(sourceId: string): Promise<string[]> {
+  const lessons = await LessonsRepo.getBySource(sourceId)
+  const categorySet = new Set<string>()
+  for (const lesson of lessons) {
+    if (lesson.category) categorySet.add(lesson.category)
+  }
+  return Array.from(categorySet).sort()
+}

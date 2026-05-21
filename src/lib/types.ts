@@ -62,6 +62,8 @@ export interface LessonRow {
   title: string
   overview?: string
   tags: string[]
+  // Organisational category from the source's index.json — used for selective sync.
+  category?: string
   creator?: string
   sources: LessonSource[]
   componentBundleUrl?: string
@@ -113,7 +115,10 @@ export type SyncStatus = 'idle' | 'syncing' | 'error' | 'done'
 
 // ─── Settings ─────────────────────────────────────────────────────────────────
 
-export type SettingsKey = 'scope' | 'sessionCap' | 'queuePriority'
+export type SettingsKey = 'scope' | 'sessionCap' | 'queuePriority' | 'sourceCategories'
+
+/** Per-source category filter. 'all' means sync all categories; a string[] lists the selected ones. */
+export type SourceCategoryFilter = Record<string, string[] | 'all'>
 
 export type QueuePriority = 'reviews-first' | 'balanced' | 'new-first'
 

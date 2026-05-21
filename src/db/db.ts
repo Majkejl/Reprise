@@ -20,6 +20,11 @@ export class AppDB extends Dexie {
       sources: 'sourceId',
       settings: 'key',
     })
+
+    // Version 2: adds `category` index to lessons for category-based sync filtering.
+    this.version(2).stores({
+      lessons: '[sourceId+lessonId], sourceId, *tags, category',
+    })
   }
 }
 

@@ -35,6 +35,11 @@ export const LessonsRepo = {
     return db.lessons.bulkPut(lessons)
   },
 
+  /** Partially updates the category field on an existing lesson without touching other fields. */
+  updateCategory(sourceId: string, lessonId: string, category: string) {
+    return db.lessons.update([sourceId, lessonId], { category })
+  },
+
   /** Deletes a single lesson by composite key. */
   delete(sourceId: string, lessonId: string) {
     return db.lessons.delete([sourceId, lessonId])

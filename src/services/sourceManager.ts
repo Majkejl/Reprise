@@ -1,9 +1,9 @@
 // sourceManager.ts — syncs lesson sources with external repos and manages source registration.
 // Services throw on failure; callers own error display and sync-status store updates.
 
-import { LessonsRepo, CardsRepo, SourcesRepo } from '@/db'
+import { LessonsRepo, CardsRepo, SourcesRepo, SettingsRepo } from '@/db'
 import { createInitialCardState } from './fsrsService'
-import type { LessonJSON, LessonRow, CardRow, SourceRow } from '@/lib/types'
+import type { LessonJSON, LessonRow, CardRow, SourceRow, SourceCategoryFilter } from '@/lib/types'
 import { BUNDLE_CACHE_NAME } from '@/lib/types'
 
 // DECISION: stable identifier for the first-party lesson source row in SourcesRepo.
@@ -11,12 +11,14 @@ export const OFFICIAL_SOURCE_ID = 'reprise-official'
 
 export const OFFICIAL_SOURCE_URL = 'https://majkejl.github.io/Reprise-lessons/'
 
-// DECISION: index.json format: { "lessons": [{ "lessonId", "version", "url" }] }
+// DECISION: index.json format: { "lessons": [{ "lessonId", "version", "url", "category?" }] }
 // where "url" is a path relative to the source's base URL, or an absolute URL.
+// "category" is an optional organisational grouping for selective sync (see design-decisions.md).
 interface SourceIndexEntry {
   lessonId: string
   version: number
   url: string
+  category?: string
 }
 
 interface SourceIndexJSON {
@@ -74,10 +76,21 @@ export async function syncSource(
       throw new Error(`Invalid index.json format received from "${sourceId}"`)
     }
 
+    const categorySettings = await SettingsRepo.get<SourceCategoryFilter>('sourceCategories')
+    const categoryFilter = categorySettings?.[sourceId] ?? 'all'
+
+    // Apply category filter before version-diffing so skipped categories don't get downloaded.
+    // Uncategorised entries (no category field) are always included.
+    const inScopeEntries = categoryFilter === 'all'
+      ? indexData.lessons
+      : indexData.lessons.filter(
+          entry => !entry.category || (categoryFilter as string[]).includes(entry.category),
+        )
+
     const localLessons = await LessonsRepo.getBySource(sourceId)
     const localVersionByLessonId = new Map(localLessons.map(lesson => [lesson.lessonId, lesson.version]))
 
-    const changedEntries = indexData.lessons.filter(entry => {
+    const changedEntries = inScopeEntries.filter(entry => {
       const localVersion = localVersionByLessonId.get(entry.lessonId)
       return localVersion === undefined || localVersion < entry.version
     })
@@ -97,7 +110,16 @@ export async function syncSource(
         lessonJSON.componentBundleUrl = resolvedBundleUrl
       }
 
-      await upsertLessonWithCards(sourceId, lessonJSON)
+      await upsertLessonWithCards(sourceId, lessonJSON, entry.category)
+    }
+
+    // Apply category metadata to all in-scope lessons, including already-synced ones.
+    // This is a DB-only update — no network request — so it runs on every sync to keep
+    // categories current even when lesson content hasn't changed.
+    for (const entry of inScopeEntries) {
+      if (entry.category !== undefined) {
+        await LessonsRepo.updateCategory(sourceId, entry.lessonId, entry.category)
+      }
     }
 
     await SourcesRepo.updateSyncTimestamp(sourceId, Date.now())
@@ -186,9 +208,36 @@ export async function removeSource(sourceId: string): Promise<void> {
   await SourcesRepo.delete(sourceId)
 }
 
+/**
+ * Returns the user's category filter for a source.
+ * 'all' (the default) means all categories are included during sync.
+ */
+export async function getSourceCategoryFilter(sourceId: string): Promise<string[] | 'all'> {
+  const settings = await SettingsRepo.get<SourceCategoryFilter>('sourceCategories')
+  return settings?.[sourceId] ?? 'all'
+}
+
+/**
+ * Persists the user's category filter for a source.
+ * Pass 'all' or an empty array to sync all categories.
+ */
+export async function setSourceCategoryFilter(
+  sourceId: string,
+  filter: string[] | 'all',
+): Promise<void> {
+  const settings = (await SettingsRepo.get<SourceCategoryFilter>('sourceCategories')) ?? {}
+  const normalizedFilter: string[] | 'all' =
+    Array.isArray(filter) && filter.length === 0 ? 'all' : filter
+  await SettingsRepo.set('sourceCategories', { ...settings, [sourceId]: normalizedFilter })
+}
+
 // ─── Internal helpers ─────────────────────────────────────────────────────────
 
-async function upsertLessonWithCards(sourceId: string, lessonJSON: LessonJSON): Promise<void> {
+async function upsertLessonWithCards(
+  sourceId: string,
+  lessonJSON: LessonJSON,
+  category?: string,
+): Promise<void> {
   const lessonRow: LessonRow = {
     sourceId,
     lessonId: lessonJSON.lessonId,
@@ -196,6 +245,7 @@ async function upsertLessonWithCards(sourceId: string, lessonJSON: LessonJSON): 
     title: lessonJSON.title,
     overview: lessonJSON.overview,
     tags: lessonJSON.tags.map(normalizeTag),
+    category,
     creator: lessonJSON.creator,
     sources: lessonJSON.sources ?? [],
     componentBundleUrl: lessonJSON.componentBundleUrl,
@@ -264,7 +314,8 @@ function resolveUrl(baseUrl: string, relativeOrAbsoluteUrl: string): string {
 }
 
 function normalizeTag(tag: string): string {
-  return tag.toLowerCase().trim().replace(/\s+/g, '-')
+  // Normalise spaces around the hierarchy separator first so "Math / Algebra" → "math/algebra".
+  return tag.toLowerCase().trim().replace(/\s*\/\s*/g, '/').replace(/\s+/g, '-')
 }
 
 function extractHostname(url: string): string {

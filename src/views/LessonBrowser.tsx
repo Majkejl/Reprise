@@ -1,10 +1,11 @@
-// LessonBrowser.tsx — browse and filter all locally cached lessons by tag and source.
+// LessonBrowser.tsx — browse and filter all locally cached lessons by category, tag, and source.
 
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { getAllLessons, getAllTags, deleteLesson } from '@/services/lessonService'
+import { getAllLessons, getAllTags } from '@/services/lessonService'
 import { getAllSources } from '@/services/sourceManager'
 import { useErrorStore } from '@/stores/uiStore'
+import { deleteLesson } from '@/services/lessonService'
 import type { LessonRow, SourceRow } from '@/lib/types'
 
 export function LessonBrowser() {
@@ -12,6 +13,7 @@ export function LessonBrowser() {
   const [sources, setSources] = useState<SourceRow[]>([])
   const [allTags, setAllTags] = useState<string[]>([])
   const [selectedSourceId, setSelectedSourceId] = useState<string>('all')
+  const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [selectedTag, setSelectedTag] = useState<string>('all')
   const showError = useErrorStore(s => s.show)
 
@@ -43,9 +45,23 @@ export function LessonBrowser() {
     }
   }
 
+  // Derive available categories from currently visible lessons.
+  const availableCategories = Array.from(
+    new Set(lessons.map(l => l.category).filter((c): c is string => !!c)),
+  ).sort()
+
+  const { flatTags, tagGroups } = buildTagGroups(allTags)
+
   const filteredLessons = lessons.filter(lesson => {
     if (selectedSourceId !== 'all' && lesson.sourceId !== selectedSourceId) return false
-    if (selectedTag !== 'all' && !lesson.tags.includes(selectedTag)) return false
+    if (selectedCategory !== 'all' && lesson.category !== selectedCategory) return false
+    if (selectedTag !== 'all') {
+      // Support prefix matching: "mathematics" matches "mathematics/algebra", "mathematics/calculus", etc.
+      const matchesTag = lesson.tags.some(
+        t => t === selectedTag || t.startsWith(selectedTag + '/'),
+      )
+      if (!matchesTag) return false
+    }
     return true
   })
 
@@ -63,14 +79,22 @@ export function LessonBrowser() {
             ...sources.map(s => ({ value: s.sourceId, label: s.label })),
           ]}
         />
-        <FilterSelect
-          label="Tag"
+        {availableCategories.length > 0 && (
+          <FilterSelect
+            label="Category"
+            value={selectedCategory}
+            onChange={setSelectedCategory}
+            options={[
+              { value: 'all', label: 'All categories' },
+              ...availableCategories.map(c => ({ value: c, label: c })),
+            ]}
+          />
+        )}
+        <TagFilterSelect
           value={selectedTag}
           onChange={setSelectedTag}
-          options={[
-            { value: 'all', label: 'All tags' },
-            ...allTags.map(t => ({ value: t, label: t })),
-          ]}
+          flatTags={flatTags}
+          tagGroups={tagGroups}
         />
       </div>
 
@@ -91,6 +115,33 @@ export function LessonBrowser() {
       )}
     </div>
   )
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+interface TagGroup {
+  prefix: string
+  tags: string[]
+}
+
+function buildTagGroups(tags: string[]): { flatTags: string[]; tagGroups: TagGroup[] } {
+  const flatTags: string[] = []
+  const groupMap = new Map<string, string[]>()
+  for (const tag of tags) {
+    const slashIndex = tag.indexOf('/')
+    if (slashIndex < 0) {
+      flatTags.push(tag)
+    } else {
+      const prefix = tag.slice(0, slashIndex)
+      const list = groupMap.get(prefix) ?? []
+      list.push(tag)
+      groupMap.set(prefix, list)
+    }
+  }
+  return {
+    flatTags,
+    tagGroups: Array.from(groupMap.entries()).map(([prefix, groupTags]) => ({ prefix, tags: groupTags })),
+  }
 }
 
 // ─── Sub-components ────────────────────────────────────────────────────────────
@@ -115,7 +166,7 @@ function LessonCard({ lesson, onDelete }: LessonCardProps) {
                 key={tag}
                 className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-500"
               >
-                {tag}
+                {tag.replace(/\//g, ' › ')}
               </span>
             ))}
           </div>
@@ -154,6 +205,42 @@ function FilterSelect({ label, value, onChange, options }: FilterSelectProps) {
           <option key={opt.value} value={opt.value}>
             {opt.label}
           </option>
+        ))}
+      </select>
+    </div>
+  )
+}
+
+interface TagFilterSelectProps {
+  value: string
+  onChange: (value: string) => void
+  flatTags: string[]
+  tagGroups: TagGroup[]
+}
+
+function TagFilterSelect({ value, onChange, flatTags, tagGroups }: TagFilterSelectProps) {
+  return (
+    <div className="flex items-center gap-2">
+      <label htmlFor="filter-tag" className="text-xs text-zinc-500 shrink-0">Tag</label>
+      <select
+        id="filter-tag"
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        className="rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-xs text-zinc-300 focus:outline-none focus:border-zinc-500"
+      >
+        <option value="all">All tags</option>
+        {flatTags.map(tag => (
+          <option key={tag} value={tag}>{tag}</option>
+        ))}
+        {tagGroups.map(group => (
+          <optgroup key={group.prefix} label={group.prefix}>
+            <option value={group.prefix}>All {group.prefix}</option>
+            {group.tags.map(tag => (
+              <option key={tag} value={tag}>
+                {tag.slice(group.prefix.length + 1)}
+              </option>
+            ))}
+          </optgroup>
         ))}
       </select>
     </div>

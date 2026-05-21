@@ -12,6 +12,8 @@ export default defineConfig({
     VitePWA({
       // New SW version takes control immediately; user gets fresh app on next navigation.
       registerType: 'autoUpdate',
+      // Disable SW in dev so hot reload and hard refresh work without manual SW unregistration.
+      devOptions: { enabled: false },
       manifest: {
         name: 'Reprise',
         short_name: 'Reprise',

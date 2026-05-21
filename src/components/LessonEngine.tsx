@@ -36,6 +36,20 @@ const RATINGS: Array<{ value: 1 | 2 | 3 | 4; label: string; sub: string; color: 
 ]
 
 function RatingButtons({ onRate }: { onRate: (r: 1 | 2 | 3 | 4) => void }) {
+  const onRateRef = useRef(onRate)
+  useEffect(() => { onRateRef.current = onRate })
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.ctrlKey || e.metaKey || e.altKey) return
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+      const num = Number(e.key)
+      if (num >= 1 && num <= 4) onRateRef.current(num as 1 | 2 | 3 | 4)
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
   return (
     <div className="flex gap-3 justify-center flex-wrap">
       {RATINGS.map(ratingOption => (
@@ -46,6 +60,7 @@ function RatingButtons({ onRate }: { onRate: (r: 1 | 2 | 3 | 4) => void }) {
         >
           <span className="font-medium">{ratingOption.label}</span>
           <span className="text-xs opacity-60">{ratingOption.sub}</span>
+          <span className="text-xs opacity-30 mt-0.5">[{ratingOption.value}]</span>
         </button>
       ))}
     </div>
@@ -69,6 +84,17 @@ function MultipleChoiceRenderer({
     setSelected(idx)
   }
 
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (isRevealed) return
+      if (e.ctrlKey || e.metaKey || e.altKey) return
+      const num = Number(e.key)
+      if (num >= 1 && num <= card.options.length) setSelected(num - 1)
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isRevealed, card.options.length])
+
   return (
     <div className="flex flex-col gap-6">
       <p className="text-zinc-100 text-base leading-relaxed">{card.question}</p>
@@ -86,7 +112,7 @@ function MultipleChoiceRenderer({
                 onClick={() => handleSelect(idx)}
                 className={`w-full rounded border px-4 py-2 text-left text-sm transition-colors ${style}`}
               >
-                {option}
+                <span className="opacity-40 mr-2 select-none">{idx + 1}.</span>{option}
               </button>
             </li>
           )

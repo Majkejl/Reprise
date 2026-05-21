@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: ['**']
 
+# Only one deploy runs at a time; a newer master push cancels the in-progress one.
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest

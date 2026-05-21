@@ -68,4 +68,17 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        // Split stable vendor code into a separate chunk so app-only changes
+        // don't invalidate the vendor cache entry in the browser or SW precache.
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+          storage: ['dexie'],
+          fsrs: ['ts-fsrs'],
+        },
+      },
+    },
+  },
 })

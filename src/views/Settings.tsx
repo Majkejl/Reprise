@@ -8,6 +8,7 @@ import { DEFAULT_SESSION_CAP } from '@/lib/types'
 
 export function Settings() {
   const [sessionCap, setSessionCap] = useState<number>(DEFAULT_SESSION_CAP)
+  const [previewNewCards, setPreviewNewCards] = useState(false)
   const [isImporting, setIsImporting] = useState(false)
   const [importSuccessMessage, setImportSuccessMessage] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -17,8 +18,12 @@ export function Settings() {
   useEffect(() => {
     async function loadSettings() {
       try {
-        const stored = await SettingsRepo.get<number>('sessionCap')
-        if (stored !== undefined) setSessionCap(stored)
+        const [storedCap, storedPreview] = await Promise.all([
+          SettingsRepo.get<number>('sessionCap'),
+          SettingsRepo.get<boolean>('previewNewCards'),
+        ])
+        if (storedCap !== undefined) setSessionCap(storedCap)
+        if (storedPreview !== undefined) setPreviewNewCards(storedPreview)
       } catch (e) {
         showError(String(e))
       }
@@ -31,6 +36,16 @@ export function Settings() {
     setSessionCap(capped)
     try {
       await SettingsRepo.set('sessionCap', capped)
+    } catch (e) {
+      showError(String(e))
+    }
+  }
+
+  const handlePreviewNewCardsToggle = async () => {
+    const next = !previewNewCards
+    setPreviewNewCards(next)
+    try {
+      await SettingsRepo.set('previewNewCards', next)
     } catch (e) {
       showError(String(e))
     }
@@ -110,6 +125,25 @@ export function Settings() {
             className="rounded border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm text-zinc-200 w-20 focus:outline-none focus:border-zinc-500"
           />
         </div>
+        <button
+          onClick={handlePreviewNewCardsToggle}
+          aria-pressed={previewNewCards}
+          className="flex items-center gap-3 text-sm text-left"
+        >
+          <span
+            className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
+              previewNewCards
+                ? 'border-sky-600 bg-sky-900/60 text-sky-400'
+                : 'border-zinc-700 text-transparent'
+            }`}
+          >
+            ✓
+          </span>
+          <span className={previewNewCards ? 'text-zinc-200' : 'text-zinc-400'}>
+            Preview new cards
+          </span>
+          <span className="text-xs text-zinc-600 ml-1">Show answer before rating on first encounter</span>
+        </button>
       </section>
 
       <section className="flex flex-col gap-4">

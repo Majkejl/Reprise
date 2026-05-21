@@ -1,14 +1,16 @@
 // LessonBrowser.tsx — browse and filter all locally cached lessons by category, tag, and source.
 
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { getAllLessons, getAllTags } from '@/services/lessonService'
+import { Link, useNavigate } from 'react-router-dom'
+import { getAllLessons, getAllTags, deleteLesson } from '@/services/lessonService'
+import { startSessionForLesson } from '@/services/sessionService'
 import { getAllSources } from '@/services/sourceManager'
 import { useErrorStore } from '@/stores/uiStore'
-import { deleteLesson } from '@/services/lessonService'
+import { useSessionStore } from '@/stores/sessionStore'
 import type { LessonRow, SourceRow } from '@/lib/types'
 
 export function LessonBrowser() {
+  const navigate = useNavigate()
   const [lessons, setLessons] = useState<LessonRow[]>([])
   const [sources, setSources] = useState<SourceRow[]>([])
   const [allTags, setAllTags] = useState<string[]>([])
@@ -16,6 +18,7 @@ export function LessonBrowser() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [selectedTag, setSelectedTag] = useState<string>('all')
   const showError = useErrorStore(s => s.show)
+  const sessionStart = useSessionStore(s => s.startSession)
 
   useEffect(() => {
     async function load() {
@@ -34,6 +37,16 @@ export function LessonBrowser() {
     }
     void load()
   }, [showError])
+
+  async function handleStudyLesson(sourceId: string, lessonId: string) {
+    try {
+      const queue = await startSessionForLesson(sourceId, lessonId)
+      sessionStart(queue)
+      navigate('/study')
+    } catch (e) {
+      showError(String(e))
+    }
+  }
 
   async function handleDeleteLesson(sourceId: string, lessonId: string) {
     if (!window.confirm('Delete this lesson and its card progress? This cannot be undone.')) return
@@ -108,6 +121,7 @@ export function LessonBrowser() {
             <LessonCard
               key={`${lesson.sourceId}|${lesson.lessonId}`}
               lesson={lesson}
+              onStudy={handleStudyLesson}
               onDelete={handleDeleteLesson}
             />
           ))}
@@ -148,10 +162,11 @@ function buildTagGroups(tags: string[]): { flatTags: string[]; tagGroups: TagGro
 
 interface LessonCardProps {
   lesson: LessonRow
+  onStudy: (sourceId: string, lessonId: string) => void
   onDelete: (sourceId: string, lessonId: string) => void
 }
 
-function LessonCard({ lesson, onDelete }: LessonCardProps) {
+function LessonCard({ lesson, onStudy, onDelete }: LessonCardProps) {
   return (
     <li className="flex items-stretch rounded border border-zinc-800 bg-zinc-900/50 hover:border-zinc-600 transition-colors">
       <Link
@@ -173,9 +188,17 @@ function LessonCard({ lesson, onDelete }: LessonCardProps) {
         )}
       </Link>
       <button
+        onClick={() => onStudy(lesson.sourceId, lesson.lessonId)}
+        aria-label={`Study ${lesson.title}`}
+        className="px-3 text-zinc-600 hover:text-sky-400 transition-colors border-l border-zinc-800 text-xs"
+        title="Study this lesson"
+      >
+        ▶
+      </button>
+      <button
         onClick={() => onDelete(lesson.sourceId, lesson.lessonId)}
         aria-label={`Delete ${lesson.title}`}
-        className="px-3 text-zinc-600 hover:text-red-400 transition-colors"
+        className="px-3 text-zinc-600 hover:text-red-400 transition-colors border-l border-zinc-800"
       >
         ✕
       </button>

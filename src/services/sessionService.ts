@@ -127,6 +127,87 @@ export async function getSourceCount(): Promise<number> {
   return sources.length
 }
 
+/**
+ * Forms a session queue limited to a single lesson. Used by "Study this lesson" shortcuts.
+ * Applies the same D5 queue policy and session cap as startSession.
+ */
+export async function startSessionForLesson(sourceId: string, lessonId: string): Promise<QueueItem[]> {
+  const allCards = await CardsRepo.getByLesson(sourceId, lessonId)
+  if (allCards.length === 0) return []
+
+  const dueCards = getDueCards(allCards)
+  const dueKeySet = new Set(dueCards.map(card => `${card.sourceId}|${card.lessonId}|${card.cardId}`))
+  const newCards = allCards.filter(
+    card => card.reps === 0 && !dueKeySet.has(`${card.sourceId}|${card.lessonId}|${card.cardId}`),
+  )
+
+  const cap = DEFAULT_SESSION_CAP
+  const reviewItems: QueueItem[] = dueCards.slice(0, cap).map(card => ({
+    sourceId: card.sourceId, lessonId: card.lessonId, cardId: card.cardId, isNew: false,
+  }))
+  const newItems: QueueItem[] = newCards.slice(0, cap - reviewItems.length).map(card => ({
+    sourceId: card.sourceId, lessonId: card.lessonId, cardId: card.cardId, isNew: true,
+  }))
+  return [...reviewItems, ...newItems]
+}
+
+/**
+ * Reverts a completed card to its previous state and removes the most recent review log entry.
+ * The previousCardRow snapshot must be taken before completeCard was called. Throws on DB error.
+ */
+export async function undoLastRating(item: QueueItem, previousCardRow: CardRow): Promise<void> {
+  await CardsRepo.upsert(previousCardRow)
+  await ReviewsRepo.deleteLatestForCard(item.sourceId, item.lessonId, item.cardId)
+}
+
+/**
+ * Returns the number of consecutive days (up to and including today) that had at least one review.
+ * If the user hasn't studied today yet, counts back from yesterday so the streak doesn't break mid-day.
+ */
+export async function getStreak(): Promise<number> {
+  const reviews = await ReviewsRepo.getAll()
+  if (reviews.length === 0) return 0
+
+  const reviewDays = new Set(reviews.map(r => toLocalDateStr(new Date(r.timestamp))))
+  const today = toLocalDateStr(new Date())
+  // Start from today if already studied, otherwise yesterday (preserves streak before daily study)
+  let cursor = reviewDays.has(today) ? new Date() : new Date(Date.now() - 86400000)
+  let streak = 0
+
+  while (reviewDays.has(toLocalDateStr(cursor))) {
+    streak++
+    cursor = new Date(cursor.getTime() - 86400000)
+  }
+
+  return streak
+}
+
+/**
+ * Returns an array of `days` integers: how many cards are due on each upcoming calendar day.
+ * Day 0 (today) includes all overdue cards. Future days count only new-due cards on that date.
+ */
+export async function getDueForecast(scope: Scope, days: number = 7): Promise<number[]> {
+  const allLessons = await getLessonsInScope(scope)
+  if (allLessons.length === 0) return Array(days).fill(0)
+
+  const lessonKeys = allLessons.map(lesson => [lesson.sourceId, lesson.lessonId] as [string, string])
+  const allCards = await CardsRepo.getByLessonKeys(lessonKeys)
+
+  const now = new Date()
+  // midnight local time for day-boundary arithmetic
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+
+  return Array.from({ length: days }, (_, i) => {
+    const dayStart = new Date(startOfToday.getTime() + i * 86400000)
+    const dayEnd = new Date(dayStart.getTime() + 86400000 - 1)
+    return allCards.filter(card => {
+      const due = new Date(card.due)
+      // Day 0: all overdue + due today; subsequent days: cards first due on that day
+      return i === 0 ? due <= dayEnd : due >= dayStart && due <= dayEnd
+    }).length
+  })
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 async function getLessonsInScope(scope: Scope) {
@@ -148,6 +229,13 @@ async function getLessonsInScope(scope: Scope) {
     lessons = lessons.filter(lesson => lesson.tags.some(tag => tagSet.has(tag)))
   }
   return lessons
+}
+
+function toLocalDateStr(date: Date): string {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
 }
 
 function rowToFSRS(row: CardRow) {

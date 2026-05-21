@@ -1,16 +1,20 @@
 // sessionStore.ts — ephemeral session queue and summary. Never persisted; cleared on session end.
 
 import { create } from 'zustand'
-import type { QueueItem, SessionSummary } from '@/lib/types'
+import type { QueueItem, SessionSummary, CardRow } from '@/lib/types'
 
 interface SessionState {
   queue: QueueItem[]
   currentIndex: number
   isActive: boolean
   summary: SessionSummary | null
+  /** Snapshot of the last-completed card, kept for undo. Cleared after undo or on session start. */
+  lastCompleted: { item: QueueItem; previousCardRow: CardRow } | null
 
   startSession: (queue: QueueItem[]) => void
-  advanceQueue: (rating: 1 | 2 | 3 | 4) => void
+  advanceQueue: (rating: 1 | 2 | 3 | 4, completedItem: QueueItem, previousCardRow: CardRow) => void
+  /** Rolls back one card: decrements index, pops the rating log, returns the snapshot (or null). */
+  undoLast: () => { item: QueueItem; previousCardRow: CardRow } | null
   endSession: () => SessionSummary
   clearSession: () => void
 }
@@ -22,7 +26,7 @@ function buildSummary(ratings: Record<1 | 2 | 3 | 4, number>): SessionSummary {
   return { total, ratings }
 }
 
-export const useSessionStore = create<SessionState>((set) => {
+export const useSessionStore = create<SessionState>((set, get) => {
   const ratingLog: (1 | 2 | 3 | 4)[] = []
 
   return {
@@ -30,15 +34,27 @@ export const useSessionStore = create<SessionState>((set) => {
     currentIndex: 0,
     isActive: false,
     summary: null,
+    lastCompleted: null,
 
     startSession(queue) {
       ratingLog.length = 0
-      set({ queue, currentIndex: 0, isActive: true, summary: null })
+      set({ queue, currentIndex: 0, isActive: true, summary: null, lastCompleted: null })
     },
 
-    advanceQueue(rating) {
+    advanceQueue(rating, completedItem, previousCardRow) {
       ratingLog.push(rating)
-      set(state => ({ currentIndex: state.currentIndex + 1 }))
+      set(state => ({
+        currentIndex: state.currentIndex + 1,
+        lastCompleted: { item: completedItem, previousCardRow },
+      }))
+    },
+
+    undoLast() {
+      const { lastCompleted, currentIndex } = get()
+      if (!lastCompleted || currentIndex === 0) return null
+      ratingLog.pop()
+      set({ currentIndex: currentIndex - 1, lastCompleted: null })
+      return lastCompleted
     },
 
     endSession() {
@@ -51,7 +67,7 @@ export const useSessionStore = create<SessionState>((set) => {
 
     clearSession() {
       ratingLog.length = 0
-      set({ queue: [], currentIndex: 0, isActive: false, summary: null })
+      set({ queue: [], currentIndex: 0, isActive: false, summary: null, lastCompleted: null })
     },
   }
 })

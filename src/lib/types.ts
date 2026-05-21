@@ -115,7 +115,7 @@ export type SyncStatus = 'idle' | 'syncing' | 'error' | 'done'
 
 // ─── Settings ─────────────────────────────────────────────────────────────────
 
-export type SettingsKey = 'scope' | 'sessionCap' | 'queuePriority' | 'sourceCategories'
+export type SettingsKey = 'scope' | 'sessionCap' | 'queuePriority' | 'sourceCategories' | 'previewNewCards'
 
 /** Per-source category filter. 'all' means sync all categories; a string[] lists the selected ones. */
 export type SourceCategoryFilter = Record<string, string[] | 'all'>

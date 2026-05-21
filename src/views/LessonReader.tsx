@@ -1,16 +1,31 @@
 // LessonReader.tsx — read-only view of a lesson's overview and all cards as Q&A pairs.
 
 import { useEffect, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { getLessonById, getAllCardsForLesson } from '@/services/lessonService'
+import { startSessionForLesson } from '@/services/sessionService'
 import { useErrorStore } from '@/stores/uiStore'
+import { useSessionStore } from '@/stores/sessionStore'
 import type { LessonRow, CardRow, MultipleChoiceCard, FillInBlankCard, FreeTextCard } from '@/lib/types'
 
 export function LessonReader() {
+  const navigate = useNavigate()
   const { sourceId, lessonId } = useParams<{ sourceId: string; lessonId: string }>()
   const [lesson, setLesson] = useState<LessonRow | null>(null)
   const [cards, setCards] = useState<CardRow[]>([])
   const showError = useErrorStore(s => s.show)
+  const sessionStart = useSessionStore(s => s.startSession)
+
+  async function handleStudy() {
+    if (!lesson) return
+    try {
+      const queue = await startSessionForLesson(lesson.sourceId, lesson.lessonId)
+      sessionStart(queue)
+      navigate('/study')
+    } catch (e) {
+      showError(String(e))
+    }
+  }
 
   useEffect(() => {
     if (!sourceId || !lessonId) return
@@ -44,9 +59,17 @@ export function LessonReader() {
   return (
     <div className="px-4 py-8 max-w-lg mx-auto flex flex-col gap-8">
       <div>
-        <Link to="/lessons" className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors">
-          ← Back to lessons
-        </Link>
+        <div className="flex items-center justify-between">
+          <Link to="/lessons" className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors">
+            ← Back to lessons
+          </Link>
+          <button
+            onClick={handleStudy}
+            className="text-xs px-3 py-1.5 rounded border border-sky-800 text-sky-400 hover:bg-sky-900/30 transition-colors"
+          >
+            Study this lesson →
+          </button>
+        </div>
         <h1 className="text-xl text-zinc-100 font-medium tracking-tight mt-3">{lesson.title}</h1>
         {lesson.tags.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-2">

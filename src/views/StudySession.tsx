@@ -3,7 +3,8 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { LessonEngine } from '@/components/LessonEngine'
-import { startSession, getCardAndContext, completeCard } from '@/services/sessionService'
+import { startSession, getCardAndContext, completeCard, undoLastRating } from '@/services/sessionService'
+import { SettingsRepo } from '@/db'
 import { OFFICIAL_SOURCE_ID } from '@/services/sourceManager'
 import {
   useSessionStore,
@@ -22,6 +23,7 @@ export function StudySession() {
 
   const sessionStart = useSessionStore(state => state.startSession)
   const advanceQueue = useSessionStore(state => state.advanceQueue)
+  const undoLast = useSessionStore(state => state.undoLast)
   const endSession = useSessionStore(state => state.endSession)
   const clearSession = useSessionStore(state => state.clearSession)
   const currentItem = useSessionStore(selectCurrentQueueItem)
@@ -29,8 +31,10 @@ export function StudySession() {
   const progressTotal = useSessionStore(selectProgressTotal)
   const isComplete = useSessionStore(selectIsSessionComplete)
   const summary = useSessionStore(state => state.summary)
+  const lastCompleted = useSessionStore(state => state.lastCompleted)
 
   const [loading, setLoading] = useState(true)
+  const [previewNewCards, setPreviewNewCards] = useState(false)
   const [cardData, setCardData] = useState<{
     card: LessonCard
     cardRow: CardRow
@@ -42,8 +46,14 @@ export function StudySession() {
     async function init() {
       try {
         setLoading(true)
-        const queue = await startSession(scope)
-        sessionStart(queue)
+        const storedPreview = await SettingsRepo.get<boolean>('previewNewCards')
+        if (storedPreview !== undefined) setPreviewNewCards(storedPreview)
+
+        // If a pre-seeded queue already exists (started via "Study this lesson"), use it as-is.
+        if (!useSessionStore.getState().isActive) {
+          const queue = await startSession(scope)
+          sessionStart(queue)
+        }
       } catch (e) {
         showError(String(e))
       } finally {
@@ -74,7 +84,13 @@ export function StudySession() {
   function handleComplete(result: { rating: 1 | 2 | 3 | 4 }) {
     if (!currentItem || !cardData) return
     completeCard(currentItem, cardData.cardRow, result.rating).catch(e => showError(String(e)))
-    advanceQueue(result.rating)
+    advanceQueue(result.rating, currentItem, cardData.cardRow)
+  }
+
+  function handleUndo() {
+    const last = undoLast()
+    if (!last) return
+    undoLastRating(last.item, last.previousCardRow).catch(e => showError(String(e)))
   }
 
   function handleEnd() {
@@ -126,7 +142,7 @@ export function StudySession() {
   }
 
   return (
-    <PageShell onExit={handleExit}>
+    <PageShell onExit={handleExit} onUndo={lastCompleted ? handleUndo : undefined}>
       <ProgressBar current={progressCurrent} total={progressTotal} />
       {cardData ? (
         <LessonEngine
@@ -135,6 +151,8 @@ export function StudySession() {
           context={cardData.context}
           componentBundleUrl={cardData.componentBundleUrl}
           isTrustedSource={currentItem?.sourceId === OFFICIAL_SOURCE_ID}
+          isNew={currentItem?.isNew ?? false}
+          previewMode={previewNewCards}
           onComplete={handleComplete}
         />
       ) : (
@@ -197,12 +215,27 @@ function Summary({ summary, onExit }: { summary: SessionSummary; onExit: () => v
   )
 }
 
-function PageShell({ children, onExit }: { children: React.ReactNode; onExit: () => void }) {
+function PageShell({
+  children,
+  onExit,
+  onUndo,
+}: {
+  children: React.ReactNode
+  onExit: () => void
+  onUndo?: () => void
+}) {
   return (
     <div className="flex flex-col gap-6 px-4 py-6 max-w-lg mx-auto">
       <div className="flex items-center justify-between">
         <span className="text-zinc-100 text-sm font-medium">Study</span>
-        <button onClick={onExit} className="text-xs text-zinc-600 hover:text-zinc-400">Exit</button>
+        <div className="flex items-center gap-3">
+          {onUndo && (
+            <button onClick={onUndo} className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors">
+              Undo
+            </button>
+          )}
+          <button onClick={onExit} className="text-xs text-zinc-600 hover:text-zinc-400">Exit</button>
+        </div>
       </div>
       {children}
     </div>

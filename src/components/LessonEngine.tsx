@@ -25,6 +25,10 @@ interface LessonEngineProps {
    * Defaults to true for backward compatibility.
    */
   isTrustedSource?: boolean
+  /** When true the card belongs to the new-card pool (reps === 0). */
+  isNew?: boolean
+  /** When true and isNew is also true, the answer and explanation are pre-revealed before rating. */
+  previewMode?: boolean
   onComplete: (result: { rating: 1 | 2 | 3 | 4 }) => void
 }
 
@@ -72,11 +76,13 @@ function RatingButtons({ onRate }: { onRate: (r: 1 | 2 | 3 | 4) => void }) {
 function MultipleChoiceRenderer({
   card,
   onComplete,
+  startRevealed = false,
 }: {
   card: MultipleChoiceCard
   onComplete: (r: { rating: 1 | 2 | 3 | 4 }) => void
+  startRevealed?: boolean
 }) {
-  const [selected, setSelected] = useState<number | null>(null)
+  const [selected, setSelected] = useState<number | null>(startRevealed ? card.correctIndex : null)
   const isRevealed = selected !== null
 
   function handleSelect(idx: number) {
@@ -135,12 +141,14 @@ function MultipleChoiceRenderer({
 function FillInBlankRenderer({
   card,
   onComplete,
+  startRevealed = false,
 }: {
   card: FillInBlankCard
   onComplete: (r: { rating: 1 | 2 | 3 | 4 }) => void
+  startRevealed?: boolean
 }) {
   const [answer, setAnswer] = useState('')
-  const [isRevealed, setIsRevealed] = useState(false)
+  const [isRevealed, setIsRevealed] = useState(startRevealed)
 
   const parts = card.prompt.split('___')
 
@@ -206,11 +214,13 @@ function FillInBlankRenderer({
 function FreeTextRenderer({
   card,
   onComplete,
+  startRevealed = false,
 }: {
   card: FreeTextCard
   onComplete: (r: { rating: 1 | 2 | 3 | 4 }) => void
+  startRevealed?: boolean
 }) {
-  const [isRevealed, setIsRevealed] = useState(false)
+  const [isRevealed, setIsRevealed] = useState(startRevealed)
 
   return (
     <div className="flex flex-col gap-6">
@@ -242,13 +252,15 @@ function FreeTextRenderer({
 function DefaultCardContent({
   card,
   onComplete,
+  startRevealed = false,
 }: {
   card: LessonCard
   onComplete: (r: { rating: 1 | 2 | 3 | 4 }) => void
+  startRevealed?: boolean
 }) {
-  if (card.type === 'multiple-choice') return <MultipleChoiceRenderer card={card} onComplete={onComplete} />
-  if (card.type === 'fill-in-blank') return <FillInBlankRenderer card={card} onComplete={onComplete} />
-  if (card.type === 'free-text') return <FreeTextRenderer card={card} onComplete={onComplete} />
+  if (card.type === 'multiple-choice') return <MultipleChoiceRenderer card={card} onComplete={onComplete} startRevealed={startRevealed} />
+  if (card.type === 'fill-in-blank') return <FillInBlankRenderer card={card} onComplete={onComplete} startRevealed={startRevealed} />
+  if (card.type === 'free-text') return <FreeTextRenderer card={card} onComplete={onComplete} startRevealed={startRevealed} />
   return null
 }
 
@@ -454,12 +466,15 @@ export function LessonEngine({
   context,
   componentBundleUrl,
   isTrustedSource = true,
+  isNew = false,
+  previewMode = false,
   onComplete,
 }: LessonEngineProps) {
   // Pass the bundle URL to useCustomRenderer only for trusted sources; undefined is a no-op.
   const { CustomRenderer, isLoadingBundle } = useCustomRenderer(
     isTrustedSource ? componentBundleUrl : undefined,
   )
+  const startRevealed = isNew && previewMode
 
   const header = (
     <div className="flex flex-wrap gap-2 text-xs text-zinc-600">
@@ -481,7 +496,7 @@ export function LessonEngine({
             card={card}
             context={context}
             onComplete={onComplete}
-            fallback={<DefaultCardContent card={card} onComplete={onComplete} />}
+            fallback={<DefaultCardContent card={card} onComplete={onComplete} startRevealed={startRevealed} />}
           />
         </div>
       </div>
@@ -506,7 +521,7 @@ export function LessonEngine({
         {CustomRenderer ? (
           <CustomRenderer card={card} context={context} onComplete={onComplete} />
         ) : (
-          <DefaultCardContent card={card} onComplete={onComplete} />
+          <DefaultCardContent card={card} onComplete={onComplete} startRevealed={startRevealed} />
         )}
       </div>
     </div>

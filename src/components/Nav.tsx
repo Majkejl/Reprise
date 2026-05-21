@@ -13,7 +13,7 @@ const links = [
 
 export function Nav() {
   return (
-    <nav className="border-b border-zinc-800 bg-zinc-950 px-4">
+    <nav aria-label="Main" className="border-b border-zinc-800 bg-zinc-950 px-4">
       <ul className="flex gap-1 overflow-x-auto">
         {links.map(({ to, label, end }) => (
           <li key={to}>

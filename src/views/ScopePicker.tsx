@@ -69,8 +69,8 @@ export function ScopePicker() {
         </p>
       </div>
 
-      <section className="flex flex-col gap-3">
-        <p className="text-xs text-zinc-400 font-medium">Sources</p>
+      <section aria-labelledby="scope-sources-heading" className="flex flex-col gap-3">
+        <h2 id="scope-sources-heading" className="text-xs text-zinc-400 font-medium">Sources</h2>
         <CheckRow
           label="All sources"
           isChecked={isAllSources}
@@ -89,8 +89,8 @@ export function ScopePicker() {
         )}
       </section>
 
-      <section className="flex flex-col gap-3">
-        <p className="text-xs text-zinc-400 font-medium">Tags</p>
+      <section aria-labelledby="scope-tags-heading" className="flex flex-col gap-3">
+        <h2 id="scope-tags-heading" className="text-xs text-zinc-400 font-medium">Tags</h2>
         <CheckRow
           label="All tags"
           isChecked={isAllTags}
@@ -126,6 +126,7 @@ function CheckRow({ label, isChecked, isDisabled = false, onToggle }: CheckRowPr
     <button
       onClick={onToggle}
       disabled={isDisabled}
+      aria-pressed={isChecked}
       className="flex items-center gap-3 text-sm text-left disabled:opacity-40"
     >
       <span

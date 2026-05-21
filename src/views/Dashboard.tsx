@@ -96,14 +96,14 @@ function SourceHealthPanel({
 }
 
 function SourceStatusIndicator({ source, status }: { source: SourceRow; status: SyncStatus }) {
-  if (status === 'syncing') return <span className="text-[10px] text-sky-400 shrink-0">syncing…</span>
-  if (status === 'error') return <span className="text-[10px] text-red-400 shrink-0">error</span>
-  if (status === 'done') return <span className="text-[10px] text-emerald-400 shrink-0">up to date</span>
+  if (status === 'syncing') return <span className="text-xs text-sky-400 shrink-0">syncing…</span>
+  if (status === 'error') return <span className="text-xs text-red-400 shrink-0">error</span>
+  if (status === 'done') return <span className="text-xs text-emerald-400 shrink-0">up to date</span>
 
   if (source.lastSynced !== undefined) {
     const date = new Date(source.lastSynced).toLocaleDateString()
-    return <span className="text-[10px] text-zinc-600 shrink-0">{date}</span>
+    return <span className="text-xs text-zinc-400 shrink-0">{date}</span>
   }
 
-  return <span className="text-[10px] text-zinc-700 shrink-0">never synced</span>
+  return <span className="text-xs text-zinc-400 shrink-0">never synced</span>
 }

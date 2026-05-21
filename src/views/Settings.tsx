@@ -99,8 +99,9 @@ export function Settings() {
       <section className="flex flex-col gap-4">
         <p className="text-xs text-zinc-400 font-medium">Session</p>
         <div className="flex items-center gap-4">
-          <label className="text-sm text-zinc-300 w-40">Cards per session</label>
+          <label htmlFor="session-cap" className="text-sm text-zinc-300 w-40">Cards per session</label>
           <input
+            id="session-cap"
             type="number"
             min={1}
             max={200}

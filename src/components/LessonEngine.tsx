@@ -119,12 +119,12 @@ function MultipleChoiceRenderer({
         })}
       </ul>
       {isRevealed && (
-        <>
+        <div role="status">
           {card.explanation && (
-            <p className="text-sm text-zinc-400 border-l-2 border-zinc-700 pl-3">{card.explanation}</p>
+            <p className="text-sm text-zinc-400 border-l-2 border-zinc-700 pl-3 mb-6">{card.explanation}</p>
           )}
           <RatingButtons onRate={rating => onComplete({ rating })} />
-        </>
+        </div>
       )}
     </div>
   )
@@ -171,6 +171,7 @@ function FillInBlankRenderer({
         <form onSubmit={handleReveal} className="flex gap-3">
           <input
             autoFocus
+            aria-label="Your answer"
             value={answer}
             onChange={e => setAnswer(e.target.value)}
             className="flex-1 rounded border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-zinc-500"

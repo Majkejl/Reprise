@@ -114,10 +114,12 @@ interface FilterSelectProps {
 }
 
 function FilterSelect({ label, value, onChange, options }: FilterSelectProps) {
+  const id = `filter-${label.toLowerCase()}`
   return (
     <div className="flex items-center gap-2">
-      <label className="text-xs text-zinc-500 shrink-0">{label}</label>
+      <label htmlFor={id} className="text-xs text-zinc-500 shrink-0">{label}</label>
       <select
+        id={id}
         value={value}
         onChange={e => onChange(e.target.value)}
         className="rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-xs text-zinc-300 focus:outline-none focus:border-zinc-500"

@@ -147,14 +147,21 @@ export function StudySession() {
 function ProgressBar({ current, total }: { current: number; total: number }) {
   const pct = total === 0 ? 0 : Math.round((current / total) * 100)
   return (
-    <div className="flex items-center gap-3">
+    <div
+      className="flex items-center gap-3"
+      role="progressbar"
+      aria-valuenow={current}
+      aria-valuemin={0}
+      aria-valuemax={total}
+      aria-label={`Card ${current} of ${total}`}
+    >
       <div className="flex-1 h-1 rounded-full bg-zinc-800">
         <div
           className="h-1 rounded-full bg-sky-500 transition-all"
           style={{ width: `${pct}%` }}
         />
       </div>
-      <span className="text-xs text-zinc-500 shrink-0">{current}/{total}</span>
+      <span className="text-xs text-zinc-500 shrink-0" aria-hidden="true">{current}/{total}</span>
     </div>
   )
 }

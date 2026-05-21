@@ -1,5 +1,4 @@
-// lessonService.ts — lesson content queries for browsing and reading views.
-// Read-only; does not modify lesson or card data.
+// lessonService.ts — lesson content queries and deletion for the lesson browser.
 
 import { LessonsRepo, CardsRepo } from '@/db'
 import type { LessonRow, CardRow } from '@/lib/types'
@@ -29,6 +28,17 @@ export async function getAllCardsForLesson(
   lessonId: string,
 ): Promise<CardRow[]> {
   return CardsRepo.getByLesson(sourceId, lessonId)
+}
+
+/**
+ * Deletes a lesson and all its associated card states from the local DB.
+ * Review history is preserved — it is an immutable audit log.
+ */
+export async function deleteLesson(sourceId: string, lessonId: string): Promise<void> {
+  await Promise.all([
+    LessonsRepo.delete(sourceId, lessonId),
+    CardsRepo.deleteByLesson(sourceId, lessonId),
+  ])
 }
 
 /**

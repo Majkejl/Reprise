@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { getAllLessons, getAllTags } from '@/services/lessonService'
+import { getAllLessons, getAllTags, deleteLesson } from '@/services/lessonService'
 import { getAllSources } from '@/services/sourceManager'
 import { useErrorStore } from '@/stores/uiStore'
 import type { LessonRow, SourceRow } from '@/lib/types'
@@ -32,6 +32,16 @@ export function LessonBrowser() {
     }
     void load()
   }, [showError])
+
+  async function handleDeleteLesson(sourceId: string, lessonId: string) {
+    if (!window.confirm('Delete this lesson and its card progress? This cannot be undone.')) return
+    try {
+      await deleteLesson(sourceId, lessonId)
+      setLessons(prev => prev.filter(l => !(l.sourceId === sourceId && l.lessonId === lessonId)))
+    } catch (e) {
+      showError(String(e))
+    }
+  }
 
   const filteredLessons = lessons.filter(lesson => {
     if (selectedSourceId !== 'all' && lesson.sourceId !== selectedSourceId) return false
@@ -71,7 +81,11 @@ export function LessonBrowser() {
       ) : (
         <ul className="flex flex-col gap-2">
           {filteredLessons.map(lesson => (
-            <LessonCard key={`${lesson.sourceId}|${lesson.lessonId}`} lesson={lesson} />
+            <LessonCard
+              key={`${lesson.sourceId}|${lesson.lessonId}`}
+              lesson={lesson}
+              onDelete={handleDeleteLesson}
+            />
           ))}
         </ul>
       )}
@@ -81,12 +95,17 @@ export function LessonBrowser() {
 
 // ─── Sub-components ────────────────────────────────────────────────────────────
 
-function LessonCard({ lesson }: { lesson: LessonRow }) {
+interface LessonCardProps {
+  lesson: LessonRow
+  onDelete: (sourceId: string, lessonId: string) => void
+}
+
+function LessonCard({ lesson, onDelete }: LessonCardProps) {
   return (
-    <li>
+    <li className="flex items-stretch rounded border border-zinc-800 bg-zinc-900/50 hover:border-zinc-600 transition-colors">
       <Link
         to={`/lessons/${encodeURIComponent(lesson.sourceId)}/${encodeURIComponent(lesson.lessonId)}`}
-        className="block rounded border border-zinc-800 bg-zinc-900/50 px-4 py-3 hover:border-zinc-600 transition-colors"
+        className="flex-1 px-4 py-3"
       >
         <div className="text-sm text-zinc-200">{lesson.title}</div>
         {lesson.tags.length > 0 && (
@@ -102,6 +121,13 @@ function LessonCard({ lesson }: { lesson: LessonRow }) {
           </div>
         )}
       </Link>
+      <button
+        onClick={() => onDelete(lesson.sourceId, lesson.lessonId)}
+        aria-label={`Delete ${lesson.title}`}
+        className="px-3 text-zinc-600 hover:text-red-400 transition-colors"
+      >
+        ✕
+      </button>
     </li>
   )
 }

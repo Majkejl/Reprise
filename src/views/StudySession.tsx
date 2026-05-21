@@ -7,7 +7,8 @@ import { startSession, getCardAndContext, completeCard } from '@/services/sessio
 import {
   useSessionStore,
   selectCurrentQueueItem,
-  selectProgress,
+  selectProgressCurrent,
+  selectProgressTotal,
   selectIsSessionComplete,
 } from '@/stores/sessionStore'
 import { useUIStore, useErrorStore } from '@/stores/uiStore'
@@ -23,7 +24,8 @@ export function StudySession() {
   const endSession = useSessionStore(state => state.endSession)
   const clearSession = useSessionStore(state => state.clearSession)
   const currentItem = useSessionStore(selectCurrentQueueItem)
-  const progress = useSessionStore(selectProgress)
+  const progressCurrent = useSessionStore(selectProgressCurrent)
+  const progressTotal = useSessionStore(selectProgressTotal)
   const isComplete = useSessionStore(selectIsSessionComplete)
   const summary = useSessionStore(state => state.summary)
 
@@ -87,7 +89,7 @@ export function StudySession() {
     return <PageShell onExit={handleExit}><p className="text-zinc-500 text-sm">Building queue…</p></PageShell>
   }
 
-  if (progress.total === 0) {
+  if (progressTotal === 0) {
     return (
       <PageShell onExit={handleExit}>
         <div className="text-center text-zinc-400 text-sm flex flex-col gap-4">
@@ -124,7 +126,7 @@ export function StudySession() {
 
   return (
     <PageShell onExit={handleExit}>
-      <ProgressBar current={progress.current} total={progress.total} />
+      <ProgressBar current={progressCurrent} total={progressTotal} />
       {cardData ? (
         <LessonEngine
           key={`${currentItem?.sourceId}|${currentItem?.lessonId}|${currentItem?.cardId}`}

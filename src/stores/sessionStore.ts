@@ -59,10 +59,13 @@ export const useSessionStore = create<SessionState>((set) => {
 export const selectCurrentQueueItem = (state: SessionState): QueueItem | null =>
   state.queue[state.currentIndex] ?? null
 
-export const selectProgress = (state: SessionState) => ({
-  current: Math.min(state.currentIndex, state.queue.length),
-  total: state.queue.length,
-})
+// Split into two scalar selectors — object-returning selectors cause infinite re-renders
+// in Zustand because a new object literal never passes Object.is comparison.
+export const selectProgressCurrent = (state: SessionState): number =>
+  Math.min(state.currentIndex, state.queue.length)
+
+export const selectProgressTotal = (state: SessionState): number =>
+  state.queue.length
 
 export const selectIsSessionComplete = (state: SessionState): boolean =>
   state.isActive && state.currentIndex >= state.queue.length

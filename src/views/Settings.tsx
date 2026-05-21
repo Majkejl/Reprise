@@ -1,16 +1,16 @@
 // Settings.tsx — session preferences, full data export, and local lesson import.
 
-import { useEffect, useRef, useState, type ChangeEvent } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent, type CSSProperties } from 'react'
 import { exportFull, exportProgress, importData, importLocalLesson, downloadBlob } from '@/services/exportImportService'
 import { SettingsRepo } from '@/db'
 import { useErrorStore } from '@/stores/uiStore'
 import { DEFAULT_SESSION_CAP } from '@/lib/types'
 
-const sectionLabelStyle: React.CSSProperties = {
+const sectionLabelStyle: CSSProperties = {
   fontSize: 10, color: 'var(--c-text3)', letterSpacing: '0.07em', fontStyle: 'italic', marginBottom: 8,
 }
 
-const secondaryButtonStyle: React.CSSProperties = {
+const secondaryButtonStyle: CSSProperties = {
   background: 'none', border: '1px solid var(--c-border)', borderRadius: 4,
   color: 'var(--c-text2)', fontSize: 10, fontFamily: 'inherit', cursor: 'pointer', padding: '6px 12px',
 }

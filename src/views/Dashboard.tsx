@@ -1,6 +1,6 @@
 // Dashboard.tsx — landing view with due card count, streak, 7-day forecast, and session quick-start.
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getDueCardCount, getStreak, getDueForecast } from '@/services/sessionService'
 import { getAllSources } from '@/services/sourceManager'
@@ -77,7 +77,7 @@ export function Dashboard() {
 
 // ─── Sub-components ────────────────────────────────────────────────────────────
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
+function SectionLabel({ children }: { children: ReactNode }) {
   return (
     <div style={{ fontSize: 10, color: 'var(--c-text3)', letterSpacing: '0.07em', marginBottom: 6, fontStyle: 'italic' }}>
       {'// '}{children}

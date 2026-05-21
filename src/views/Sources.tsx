@@ -1,6 +1,6 @@
 // Sources.tsx — register, remove, manually sync lesson sources, and configure per-source category filters.
 
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useState, type FormEvent, type CSSProperties } from 'react'
 import {
   getAllSources,
   syncSource,
@@ -16,13 +16,13 @@ import { getCategoriesForSource } from '@/services/lessonService'
 import { useUIStore, useErrorStore } from '@/stores/uiStore'
 import type { SourceRow, SyncStatus } from '@/lib/types'
 
-const inputStyle: React.CSSProperties = {
+const inputStyle: CSSProperties = {
   width: '100%', padding: '9px 12px', background: 'var(--c-raised)',
   border: '1px solid var(--c-border)', borderRadius: 5,
   color: 'var(--c-text)', fontFamily: 'inherit', fontSize: 11, outline: 'none',
 }
 
-const secondaryButtonStyle: React.CSSProperties = {
+const secondaryButtonStyle: CSSProperties = {
   padding: '4px 10px', background: 'none', border: '1px solid var(--c-border)',
   borderRadius: 4, color: 'var(--c-text2)', fontSize: 10, fontFamily: 'inherit', cursor: 'pointer',
 }

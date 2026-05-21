@@ -67,7 +67,10 @@ export function StudySession() {
   }, [])
 
   useEffect(() => {
-    if (!currentItem) { setCardData(null); return }
+    // Always clear stale card data immediately — prevents a brief flash of the old card's
+    // renderer while the new card loads, which could confuse Playwright's or() locator.
+    setCardData(null)
+    if (!currentItem) return
     let isCancelled = false
     async function load() {
       try {

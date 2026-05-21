@@ -41,6 +41,10 @@ test('scope selection — restricting to a tag still yields cards from that tag'
   // Tags are derived from LessonsRepo so they appear even for locally-imported lessons.
   await page.goto('/#/scope')
 
+  // The Tags section is collapsible and closed by default (no specific tags selected).
+  // Expand it by clicking the "Tags" heading button before interacting with individual tags.
+  await page.getByRole('button', { name: /^tags/i }).click()
+
   // "All tags" should be the default (aria-pressed=true)
   await expect(page.getByRole('button', { name: /all tags/i })).toHaveAttribute('aria-pressed', 'true')
 

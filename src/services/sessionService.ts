@@ -130,14 +130,18 @@ export async function getSourceCount(): Promise<number> {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 async function getLessonsInScope(scope: Scope) {
-  if (scope.sourceIds === 'all' && scope.tags === 'all') {
-    return LessonsRepo.getAll()
-  }
   let lessons = scope.sourceIds === 'all'
     ? await LessonsRepo.getAll()
     : (await Promise.all(
         (scope.sourceIds as string[]).map(sourceId => LessonsRepo.getBySource(sourceId))
       )).flat()
+
+  // categories is optional for backward compat — treat undefined as 'all'
+  const effectiveCategories = scope.categories ?? 'all'
+  if (effectiveCategories !== 'all') {
+    const categorySet = new Set(effectiveCategories as string[])
+    lessons = lessons.filter(lesson => lesson.category && categorySet.has(lesson.category))
+  }
 
   if (scope.tags !== 'all') {
     const tagSet = new Set(scope.tags as string[])

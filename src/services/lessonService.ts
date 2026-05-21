@@ -54,6 +54,18 @@ export async function getAllTags(): Promise<string[]> {
 }
 
 /**
+ * Returns the sorted list of unique category values across all lessons in the local DB.
+ */
+export async function getAllCategories(): Promise<string[]> {
+  const lessons = await LessonsRepo.getAll()
+  const categorySet = new Set<string>()
+  for (const lesson of lessons) {
+    if (lesson.category) categorySet.add(lesson.category)
+  }
+  return Array.from(categorySet).sort()
+}
+
+/**
  * Returns the sorted list of unique category values for a given source.
  * Only lessons that were synced with a category field are included.
  */

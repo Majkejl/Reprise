@@ -133,10 +133,13 @@ export const DEFAULT_QUEUE_PRIORITY: QueuePriority = 'reviews-first'
 
 export interface Scope {
   sourceIds: string[] | 'all'
+  // Optional for backward compatibility with scopes stored before categories were introduced.
+  // Treat undefined as 'all' everywhere — see getLessonsInScope in sessionService.ts.
+  categories?: string[] | 'all'
   tags: string[] | 'all'
 }
 
-export const DEFAULT_SCOPE: Scope = { sourceIds: 'all', tags: 'all' }
+export const DEFAULT_SCOPE: Scope = { sourceIds: 'all', categories: 'all', tags: 'all' }
 
 // ─── Session ──────────────────────────────────────────────────────────────────
 

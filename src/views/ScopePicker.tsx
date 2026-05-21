@@ -1,13 +1,14 @@
-// ScopePicker.tsx — select which sources and tags are in scope for study sessions.
+// ScopePicker.tsx — select which sources, categories, and tags are in scope for study sessions.
 
 import { useEffect, useState } from 'react'
-import { getAllTags } from '@/services/lessonService'
+import { getAllTags, getAllCategories } from '@/services/lessonService'
 import { getAllSources } from '@/services/sourceManager'
 import { useUIStore, useErrorStore } from '@/stores/uiStore'
-import type { SourceRow, Scope } from '@/lib/types'
+import type { SourceRow } from '@/lib/types'
 
 export function ScopePicker() {
   const [availableSources, setAvailableSources] = useState<SourceRow[]>([])
+  const [availableCategories, setAvailableCategories] = useState<string[]>([])
   const [availableTags, setAvailableTags] = useState<string[]>([])
   const scope = useUIStore(s => s.scope)
   const setScope = useUIStore(s => s.setScope)
@@ -16,8 +17,13 @@ export function ScopePicker() {
   useEffect(() => {
     async function load() {
       try {
-        const [sources, tags] = await Promise.all([getAllSources(), getAllTags()])
+        const [sources, categories, tags] = await Promise.all([
+          getAllSources(),
+          getAllCategories(),
+          getAllTags(),
+        ])
         setAvailableSources(sources)
+        setAvailableCategories(categories)
         setAvailableTags(tags)
       } catch (e) {
         showError(String(e))
@@ -27,21 +33,21 @@ export function ScopePicker() {
   }, [showError])
 
   const isAllSources = scope.sourceIds === 'all'
+  const isAllCategories = (scope.categories ?? 'all') === 'all'
   const isAllTags = scope.tags === 'all'
 
+  // Tags section is expanded by default only if specific tags are already selected,
+  // so users with a clean scope see a compact view.
+  const [isTagsExpanded, setIsTagsExpanded] = useState(!isAllTags)
+
   const selectedSourceIds = isAllSources ? [] : (scope.sourceIds as string[])
+  const selectedCategories = isAllCategories ? [] : (scope.categories as string[])
   const selectedTags = isAllTags ? [] : (scope.tags as string[])
 
   const { flatTags, tagGroups } = buildTagGroups(availableTags)
 
   const handleSourcesAllToggle = async () => {
-    const updatedScope: Scope = { ...scope, sourceIds: 'all' }
-    try { await setScope(updatedScope) } catch (e) { showError(String(e)) }
-  }
-
-  const handleTagsAllToggle = async () => {
-    const updatedScope: Scope = { ...scope, tags: 'all' }
-    try { await setScope(updatedScope) } catch (e) { showError(String(e)) }
+    try { await setScope({ ...scope, sourceIds: 'all' }) } catch (e) { showError(String(e)) }
   }
 
   const handleSourceToggle = async (sourceId: string) => {
@@ -49,8 +55,23 @@ export function ScopePicker() {
     const next = current.includes(sourceId)
       ? current.filter(id => id !== sourceId)
       : [...current, sourceId]
-    const updatedScope: Scope = { ...scope, sourceIds: next.length > 0 ? next : 'all' }
-    try { await setScope(updatedScope) } catch (e) { showError(String(e)) }
+    try { await setScope({ ...scope, sourceIds: next.length > 0 ? next : 'all' }) } catch (e) { showError(String(e)) }
+  }
+
+  const handleCategoriesAllToggle = async () => {
+    try { await setScope({ ...scope, categories: 'all' }) } catch (e) { showError(String(e)) }
+  }
+
+  const handleCategoryToggle = async (category: string) => {
+    const current = isAllCategories ? [] : (scope.categories as string[])
+    const next = current.includes(category)
+      ? current.filter(c => c !== category)
+      : [...current, category]
+    try { await setScope({ ...scope, categories: next.length > 0 ? next : 'all' }) } catch (e) { showError(String(e)) }
+  }
+
+  const handleTagsAllToggle = async () => {
+    try { await setScope({ ...scope, tags: 'all' }) } catch (e) { showError(String(e)) }
   }
 
   const handleTagToggle = async (tag: string) => {
@@ -58,19 +79,16 @@ export function ScopePicker() {
     const next = current.includes(tag)
       ? current.filter(t => t !== tag)
       : [...current, tag]
-    const updatedScope: Scope = { ...scope, tags: next.length > 0 ? next : 'all' }
-    try { await setScope(updatedScope) } catch (e) { showError(String(e)) }
+    try { await setScope({ ...scope, tags: next.length > 0 ? next : 'all' }) } catch (e) { showError(String(e)) }
   }
 
   const handleGroupToggle = async (groupTags: string[]) => {
-    // Consistent with single-tag toggle: clicking a group when "all" is selected scopes to that group.
     const current = isAllTags ? [] : (scope.tags as string[])
     const allInGroup = groupTags.every(t => current.includes(t))
     const next = allInGroup
       ? current.filter(t => !groupTags.includes(t))
       : [...new Set([...current, ...groupTags])]
-    const updatedScope: Scope = { ...scope, tags: next.length > 0 ? next : 'all' }
-    try { await setScope(updatedScope) } catch (e) { showError(String(e)) }
+    try { await setScope({ ...scope, tags: next.length > 0 ? next : 'all' }) } catch (e) { showError(String(e)) }
   }
 
   return (
@@ -78,17 +96,14 @@ export function ScopePicker() {
       <div>
         <h1 className="text-xl text-zinc-100 font-medium tracking-tight">Scope</h1>
         <p className="text-xs text-zinc-500 mt-1">
-          Choose which sources and tags are included in your study sessions. Changes take effect at the next session start.
+          Choose what is included in your study sessions. Changes take effect at the next session start.
         </p>
       </div>
 
+      {/* ── Sources ── */}
       <section aria-labelledby="scope-sources-heading" className="flex flex-col gap-3">
-        <h2 id="scope-sources-heading" className="text-xs text-zinc-400 font-medium">Sources</h2>
-        <CheckRow
-          label="All sources"
-          isChecked={isAllSources}
-          onToggle={handleSourcesAllToggle}
-        />
+        <h2 id="scope-sources-heading" className="text-xs text-zinc-400 font-medium uppercase tracking-wide">Sources</h2>
+        <CheckRow label="All sources" isChecked={isAllSources} onToggle={handleSourcesAllToggle} />
         {availableSources.map(source => (
           <CheckRow
             key={source.sourceId}
@@ -102,51 +117,82 @@ export function ScopePicker() {
         )}
       </section>
 
+      {/* ── Categories ── */}
+      {availableCategories.length > 0 && (
+        <section aria-labelledby="scope-categories-heading" className="flex flex-col gap-3">
+          <h2 id="scope-categories-heading" className="text-xs text-zinc-400 font-medium uppercase tracking-wide">Categories</h2>
+          <CheckRow label="All categories" isChecked={isAllCategories} onToggle={handleCategoriesAllToggle} />
+          {availableCategories.map(category => (
+            <CheckRow
+              key={category}
+              label={category}
+              isChecked={!isAllCategories && selectedCategories.includes(category)}
+              onToggle={() => handleCategoryToggle(category)}
+            />
+          ))}
+        </section>
+      )}
+
+      {/* ── Tags (collapsible) ── */}
       <section aria-labelledby="scope-tags-heading" className="flex flex-col gap-3">
-        <h2 id="scope-tags-heading" className="text-xs text-zinc-400 font-medium">Tags</h2>
-        <CheckRow
-          label="All tags"
-          isChecked={isAllTags}
-          onToggle={handleTagsAllToggle}
-        />
+        <button
+          id="scope-tags-heading"
+          onClick={() => setIsTagsExpanded(v => !v)}
+          className="flex items-center justify-between text-xs text-zinc-400 font-medium uppercase tracking-wide w-full text-left"
+          aria-expanded={isTagsExpanded}
+        >
+          <span>
+            Tags
+            {!isAllTags && (
+              <span className="ml-2 text-sky-400 normal-case font-normal">
+                {selectedTags.length} selected
+              </span>
+            )}
+          </span>
+          <span className={`transition-transform ${isTagsExpanded ? 'rotate-180' : ''}`}>▾</span>
+        </button>
 
-        {/* Flat (ungrouped) tags */}
-        {flatTags.map(tag => (
-          <CheckRow
-            key={tag}
-            label={tag}
-            isChecked={isAllTags || selectedTags.includes(tag)}
-            onToggle={() => handleTagToggle(tag)}
-          />
-        ))}
+        {isTagsExpanded && (
+          <div className="flex flex-col gap-3">
+            <CheckRow label="All tags" isChecked={isAllTags} onToggle={handleTagsAllToggle} />
 
-        {/* Hierarchical tag groups */}
-        {tagGroups.map(group => {
-          const allInGroup = isAllTags || group.tags.every(t => selectedTags.includes(t))
-          const someInGroup = !isAllTags && group.tags.some(t => selectedTags.includes(t))
-          return (
-            <div key={group.prefix} className="flex flex-col gap-2">
-              <GroupRow
-                label={group.prefix}
-                isAllChecked={allInGroup}
-                isSomeChecked={someInGroup}
-                onToggle={() => handleGroupToggle(group.tags)}
+            {flatTags.map(tag => (
+              <CheckRow
+                key={tag}
+                label={tag}
+                isChecked={isAllTags || selectedTags.includes(tag)}
+                onToggle={() => handleTagToggle(tag)}
               />
-              {group.tags.map(tag => (
-                <div key={tag} className="pl-7">
-                  <CheckRow
-                    label={tag.slice(group.prefix.length + 1)}
-                    isChecked={isAllTags || selectedTags.includes(tag)}
-                    onToggle={() => handleTagToggle(tag)}
-                  />
-                </div>
-              ))}
-            </div>
-          )
-        })}
+            ))}
 
-        {availableTags.length === 0 && (
-          <p className="text-xs text-zinc-600">No tags found in synced lessons.</p>
+            {tagGroups.map(group => {
+              const allInGroup = isAllTags || group.tags.every(t => selectedTags.includes(t))
+              const someInGroup = !isAllTags && group.tags.some(t => selectedTags.includes(t))
+              return (
+                <div key={group.prefix} className="flex flex-col gap-2">
+                  <GroupRow
+                    label={group.prefix}
+                    isAllChecked={allInGroup}
+                    isSomeChecked={someInGroup}
+                    onToggle={() => handleGroupToggle(group.tags)}
+                  />
+                  {group.tags.map(tag => (
+                    <div key={tag} className="pl-7">
+                      <CheckRow
+                        label={tag.slice(group.prefix.length + 1)}
+                        isChecked={isAllTags || selectedTags.includes(tag)}
+                        onToggle={() => handleTagToggle(tag)}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )
+            })}
+
+            {availableTags.length === 0 && (
+              <p className="text-xs text-zinc-600">No tags found in synced lessons.</p>
+            )}
+          </div>
         )}
       </section>
     </div>

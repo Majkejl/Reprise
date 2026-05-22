@@ -1,6 +1,6 @@
 // helpers.ts — shared fixture data and setup utilities for E2E tests.
 
-import type { Page } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
 import { Buffer } from 'buffer'
 
 /** Minimal lesson used as fixture data. Three cards, one of each type. */
@@ -34,6 +34,57 @@ export const FIXTURE_LESSON = JSON.stringify({
     },
   ],
 })
+
+/**
+ * Waits until at least one lesson row exists in the app's IndexedDB.
+ * The startup tutorial seed is async (fetch + writes), and views like LessonBrowser/Dashboard
+ * read the DB once on mount — so tests must wait for the seed to land before asserting on them.
+ */
+export async function waitForLessonsSeeded(page: Page): Promise<void> {
+  await expect
+    .poll(
+      () =>
+        page.evaluate(
+          () =>
+            new Promise<number>(resolve => {
+              const request = indexedDB.open('reprise')
+              request.onsuccess = () => {
+                const database = request.result
+                if (!database.objectStoreNames.contains('lessons')) {
+                  database.close()
+                  resolve(0)
+                  return
+                }
+                const count = database.transaction('lessons', 'readonly').objectStore('lessons').count()
+                count.onsuccess = () => {
+                  const total = count.result
+                  database.close()
+                  resolve(total)
+                }
+                count.onerror = () => {
+                  database.close()
+                  resolve(0)
+                }
+              }
+              request.onerror = () => resolve(0)
+            }),
+        ),
+      { timeout: 15000, intervals: [200, 500, 1000] },
+    )
+    .toBeGreaterThan(0)
+}
+
+/**
+ * Dismisses the bundled tutorial through the UI so its cards are excluded from study sessions.
+ * Used by suites that assume a content-free baseline (the tutorial now auto-seeds on startup).
+ * Waits for the seed first so the tutorial reader can load before we click Dismiss.
+ */
+export async function dismissTutorial(page: Page): Promise<void> {
+  await waitForLessonsSeeded(page)
+  await page.goto('/#/lessons/reprise-builtin/reprise-tutorial-v1')
+  await page.getByRole('button', { name: /dismiss tutorial/i }).click()
+  await expect(page.getByRole('heading', { name: 'Lessons' })).toBeVisible()
+}
 
 /** Resets the app's IndexedDB to a clean state between tests. */
 export async function clearAppData(page: Page): Promise<void> {

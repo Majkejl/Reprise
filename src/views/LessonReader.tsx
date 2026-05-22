@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { getLessonById, getAllCardsForLesson } from '@/services/lessonService'
 import { startSessionForLesson } from '@/services/sessionService'
+import { dismissTutorial, BUILTIN_SOURCE_ID } from '@/services/sourceManager'
 import { useErrorStore } from '@/stores/uiStore'
 import { useSessionStore } from '@/stores/sessionStore'
 import type { LessonRow, CardRow, MultipleChoiceCard, FillInBlankCard, FreeTextCard } from '@/lib/types'
@@ -22,6 +23,15 @@ export function LessonReader() {
       const queue = await startSessionForLesson(lesson.sourceId, lesson.lessonId)
       sessionStart(queue)
       navigate('/study')
+    } catch (e) {
+      showError(String(e))
+    }
+  }
+
+  async function handleDismissTutorial() {
+    try {
+      await dismissTutorial()
+      navigate('/lessons')
     } catch (e) {
       showError(String(e))
     }
@@ -63,12 +73,22 @@ export function LessonReader() {
           <Link to="/lessons" className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors">
             ← Back to lessons
           </Link>
-          <button
-            onClick={handleStudy}
-            className="text-xs px-3 py-1.5 rounded border border-sky-800 text-sky-400 hover:bg-sky-900/30 transition-colors"
-          >
-            Study this lesson →
-          </button>
+          <div className="flex items-center gap-2">
+            {lesson.sourceId === BUILTIN_SOURCE_ID && (
+              <button
+                onClick={handleDismissTutorial}
+                className="text-xs px-3 py-1.5 rounded border border-zinc-700 text-zinc-400 hover:bg-zinc-800/50 transition-colors"
+              >
+                Dismiss tutorial
+              </button>
+            )}
+            <button
+              onClick={handleStudy}
+              className="text-xs px-3 py-1.5 rounded border border-sky-800 text-sky-400 hover:bg-sky-900/30 transition-colors"
+            >
+              Study this lesson →
+            </button>
+          </div>
         </div>
         <h1 className="text-xl text-zinc-100 font-medium tracking-tight mt-3">{lesson.title}</h1>
         {lesson.tags.length > 0 && (

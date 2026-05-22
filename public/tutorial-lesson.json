@@ -1,0 +1,43 @@
+{
+  "lessonId": "reprise-tutorial-v1",
+  "version": 1,
+  "title": "Welcome to Reprise",
+  "overview": "Reprise is a spaced-repetition study app that runs entirely in your browser — there is no account and no server, and all of your progress stays on this device. You study in short sessions: each card shows a question, you answer it, and then you rate how well you knew it (Again, Hard, Good, or Easy). Reprise uses that rating to schedule when you will see the card next, bringing it back just before you are likely to forget it. This built-in tutorial introduces the three kinds of cards you will meet. Work through it like a normal session, then dismiss it whenever you are ready using the “Dismiss tutorial” button above.",
+  "tags": [
+    "tutorial"
+  ],
+  "creator": "Reprise",
+  "cards": [
+    {
+      "cardId": "tut-mc-01",
+      "type": "multiple-choice",
+      "question": "This is a multiple-choice card. After you answer a card and reveal the result, Reprise asks you to rate it. What does your rating control?",
+      "options": [
+        "Your overall score or grade",
+        "When the card will be shown to you again",
+        "Whether the card is permanently deleted",
+        "Nothing — the buttons are decorative"
+      ],
+      "correctIndex": 1,
+      "explanation": "Your rating (Again, Hard, Good, or Easy) tells Reprise how well you knew the answer. It uses this to schedule the card's next review — cards you find hard come back sooner, easy ones come back later. There is no score to chase; the only goal is remembering."
+    },
+    {
+      "cardId": "tut-fib-01",
+      "type": "fill-in-blank",
+      "prompt": "This is a fill-in-the-blank card. Type your answer, then press Check. Reprise keeps all of your lessons and progress on your own ___, so it works offline and nothing is uploaded.",
+      "acceptedAnswers": [
+        "device",
+        "computer",
+        "browser",
+        "machine"
+      ],
+      "explanation": "Everything in Reprise is stored locally in your browser on this device. That means it works offline — but it also means clearing your browser data will erase your progress, so use Export in Settings to back it up."
+    },
+    {
+      "cardId": "tut-ft-01",
+      "type": "free-text",
+      "question": "This is a free-text card — there is no automatic grading, so you reveal the explanation and rate yourself honestly. In your own words: why is rating a card “Again” useful even though it means you will see the card again very soon?",
+      "explanation": "Rating a card “Again” tells Reprise you didn't recall it, so it brings the card back within a minute and shortens its future intervals until the memory sticks. Honest self-rating is what makes spaced repetition work — there is no grade to protect, only your future memory. That's the whole loop: answer, rate, repeat. You're ready to study for real."
+    }
+  ]
+}

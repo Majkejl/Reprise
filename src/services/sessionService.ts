@@ -1,8 +1,9 @@
 // sessionService.ts — queue formation, card serving, and card completion lifecycle.
 // Does not own error display; callers catch and route errors through useErrorStore.
 
-import { LessonsRepo, CardsRepo, ReviewsRepo, SourcesRepo } from '@/db'
+import { LessonsRepo, CardsRepo, ReviewsRepo, SourcesRepo, SettingsRepo } from '@/db'
 import { createInitialCardState, getDueCards, applyRating } from './fsrsService'
+import { BUILTIN_SOURCE_ID } from './sourceManager'
 import type { Card } from 'ts-fsrs'
 import type { Scope, QueueItem, LessonContext, CardRow, LessonCard } from '@/lib/types'
 import { DEFAULT_SESSION_CAP, DEFAULT_QUEUE_PRIORITY } from '@/lib/types'
@@ -216,6 +217,14 @@ async function getLessonsInScope(scope: Scope) {
     : (await Promise.all(
         (scope.sourceIds as string[]).map(sourceId => LessonsRepo.getBySource(sourceId))
       )).flat()
+
+  // Once the user dismisses the bundled tutorial, its cards drop out of the global queue and
+  // due counts. The lesson stays in the DB (still studyable via "Study this lesson"), so we
+  // filter it here rather than deleting it. See design-decisions.md (Phase 11).
+  const tutorialDismissed = (await SettingsRepo.get<string>('tutorialDismissed')) === 'true'
+  if (tutorialDismissed) {
+    lessons = lessons.filter(lesson => lesson.sourceId !== BUILTIN_SOURCE_ID)
+  }
 
   // categories is optional for backward compat — treat undefined as 'all'
   const effectiveCategories = scope.categories ?? 'all'

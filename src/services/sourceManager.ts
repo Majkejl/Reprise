@@ -11,6 +11,12 @@ export const OFFICIAL_SOURCE_ID = 'reprise-official'
 
 export const OFFICIAL_SOURCE_URL = 'https://majkejl.github.io/Reprise-lessons/'
 
+// Stable identifier for the bundled tutorial source. Kept separate from OFFICIAL_SOURCE_ID
+// because the tutorial is never part of the sync cycle — it has no remote URL (Phase 11).
+export const BUILTIN_SOURCE_ID = 'reprise-builtin'
+
+const TUTORIAL_LESSON_ID = 'reprise-tutorial-v1'
+
 // DECISION: index.json format: { "lessons": [{ "lessonId", "version", "url", "category?" }] }
 // where "url" is a path relative to the source's base URL, or an absolute URL.
 // "category" is an optional organisational grouping for selective sync (see design-decisions.md).
@@ -40,6 +46,40 @@ export async function ensureOfficialSource(): Promise<void> {
       url: OFFICIAL_SOURCE_URL,
     })
   }
+}
+
+/**
+ * Seeds the bundled tutorial lesson so new users have content on first launch with no sync.
+ * Idempotent and safe to call on every startup: no-ops if the tutorial has been dismissed or
+ * the lesson already exists. The tutorial is not part of the sync cycle — it ships as a static
+ * asset and is fetched once from the app's own origin.
+ */
+export async function ensureTutorialLesson(): Promise<void> {
+  const dismissed = await SettingsRepo.get<string>('tutorialDismissed')
+  if (dismissed === 'true') return
+
+  const existing = await LessonsRepo.get(BUILTIN_SOURCE_ID, TUTORIAL_LESSON_ID)
+  if (existing) return
+
+  // DECISION: tutorial ships as a static file in public/ and is fetched at runtime. Resolve the
+  // path with import.meta.env.BASE_URL so it works under the GitHub Pages base path (e.g. /Reprise/)
+  // as well as at the dev/preview root — a bare '/tutorial-lesson.json' would 404 in production.
+  const response = await fetch(`${import.meta.env.BASE_URL}tutorial-lesson.json`)
+  if (!response.ok) {
+    throw new Error(`Failed to load bundled tutorial (HTTP ${response.status})`)
+  }
+  const lessonJSON = (await response.json()) as LessonJSON
+
+  await upsertLessonWithCards(BUILTIN_SOURCE_ID, lessonJSON)
+  await SourcesRepo.upsert({ sourceId: BUILTIN_SOURCE_ID, label: 'Built-in Tutorial' })
+}
+
+/**
+ * Marks the bundled tutorial as dismissed: it is excluded from study sessions and never re-seeded.
+ * The lesson row stays in the DB and remains openable from the Lesson Browser (Phase 11).
+ */
+export async function dismissTutorial(): Promise<void> {
+  await SettingsRepo.set('tutorialDismissed', 'true')
 }
 
 /**

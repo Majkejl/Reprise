@@ -10,6 +10,7 @@ import {
   getSourceCategoryFilter,
   setSourceCategoryFilter,
   OFFICIAL_SOURCE_ID,
+  BUILTIN_SOURCE_ID,
   type SyncProgressCallback,
 } from '@/services/sourceManager'
 import { getCategoriesForSource } from '@/services/lessonService'
@@ -41,7 +42,9 @@ export function Sources() {
 
   const loadSources = useCallback(async () => {
     try {
-      const loadedSources = await getAllSources()
+      // The built-in tutorial has no remote URL and is not user-managed — keep it out of the
+      // Sources view, which is for registered remote sources only (Phase 11).
+      const loadedSources = (await getAllSources()).filter(s => s.sourceId !== BUILTIN_SOURCE_ID)
       setSources(loadedSources)
       const [cats, filters] = await Promise.all([
         Promise.all(loadedSources.map(s => getCategoriesForSource(s.sourceId))),

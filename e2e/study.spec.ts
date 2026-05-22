@@ -1,12 +1,15 @@
 // study.spec.ts — card loop and session end E2E tests.
 
 import { test, expect } from '@playwright/test'
-import { clearAppData, importFixtureLesson, answerCardGood } from './helpers'
+import { clearAppData, importFixtureLesson, answerCardGood, dismissTutorial } from './helpers'
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/#/')
   await clearAppData(page)
   await page.reload()
+  // The bundled tutorial auto-seeds on startup; dismiss it so these tests see a content-free
+  // baseline (otherwise its 3 cards would join the global study queue).
+  await dismissTutorial(page)
 })
 
 test('empty state shows nothing due', async ({ page }) => {

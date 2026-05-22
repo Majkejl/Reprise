@@ -6,7 +6,7 @@ import { Nav } from '@/components/Nav'
 import { OfflineIndicator } from '@/components/OfflineIndicator'
 import { ErrorNotification } from '@/components/ErrorNotification'
 import { useUIStore, useErrorStore } from '@/stores/uiStore'
-import { ensureOfficialSource } from '@/services/sourceManager'
+import { ensureOfficialSource, ensureTutorialLesson } from '@/services/sourceManager'
 import { Dashboard } from '@/views/Dashboard'
 import { StudySession } from '@/views/StudySession'
 import { LessonBrowser } from '@/views/LessonBrowser'
@@ -22,6 +22,7 @@ export function App() {
   useEffect(() => {
     void loadScope()
     void ensureOfficialSource().catch(e => showError(String(e)))
+    void ensureTutorialLesson().catch(e => showError(String(e)))
   }, [loadScope, showError])
 
   return (

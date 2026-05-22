@@ -50,16 +50,18 @@ export async function ensureOfficialSource(): Promise<void> {
 
 /**
  * Seeds the bundled tutorial lesson so new users have content on first launch with no sync.
- * Idempotent and safe to call on every startup: no-ops if the tutorial has been dismissed or
- * the lesson already exists. The tutorial is not part of the sync cycle — it ships as a static
- * asset and is fetched once from the app's own origin.
+ * Idempotent and safe to call on every startup: no-ops if the tutorial has been dismissed or the
+ * stored copy is already at (or ahead of) the bundled version. Re-seeds when the bundled file is
+ * newer so content edits reach existing users. The tutorial is never part of the sync cycle.
  */
 export async function ensureTutorialLesson(): Promise<void> {
   const dismissed = await SettingsRepo.get<string>('tutorialDismissed')
   if (dismissed === 'true') return
 
   const existing = await LessonsRepo.get(BUILTIN_SOURCE_ID, TUTORIAL_LESSON_ID)
-  if (existing) return
+  // Already seeded and offline: keep what we have — the version check needs the static asset, and
+  // an offline fetch miss would surface as a startup error for a tutorial the user already has.
+  if (existing && !navigator.onLine) return
 
   // DECISION: tutorial ships as a static file in public/ and is fetched at runtime. Resolve the
   // path with import.meta.env.BASE_URL so it works under the GitHub Pages base path (e.g. /Reprise/)
@@ -69,6 +71,10 @@ export async function ensureTutorialLesson(): Promise<void> {
     throw new Error(`Failed to load bundled tutorial (HTTP ${response.status})`)
   }
   const lessonJSON = (await response.json()) as LessonJSON
+
+  // Version-diff like syncSource: only re-seed when the bundled tutorial is newer. upsertLessonWithCards
+  // refreshes card content for existing cards while preserving their FSRS progress.
+  if (existing && existing.version >= lessonJSON.version) return
 
   await upsertLessonWithCards(BUILTIN_SOURCE_ID, lessonJSON)
   await SourcesRepo.upsert({ sourceId: BUILTIN_SOURCE_ID, label: 'Built-in Tutorial' })

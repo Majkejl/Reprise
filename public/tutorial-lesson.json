@@ -1,8 +1,8 @@
 {
   "lessonId": "reprise-tutorial-v1",
-  "version": 1,
+  "version": 2,
   "title": "Welcome to Reprise",
-  "overview": "Reprise is a spaced-repetition study app that runs entirely in your browser — there is no account and no server, and all of your progress stays on this device. You study in short sessions: each card shows a question, you answer it, and then you rate how well you knew it (Again, Hard, Good, or Easy). Reprise uses that rating to schedule when you will see the card next, bringing it back just before you are likely to forget it. This built-in tutorial introduces the three kinds of cards you will meet. Work through it like a normal session, then dismiss it whenever you are ready using the “Dismiss tutorial” button above.",
+  "overview": "Reprise is a spaced-repetition study app that runs entirely in your browser — there is no account and no server, and all of your progress stays on this device. You study in short sessions: each card shows a question, you answer it, and then you rate how well you knew it (Again, Hard, Good, or Easy). Reprise uses that rating to schedule when you will see the card next, bringing it back just before you are likely to forget it. This built-in tutorial introduces the three kinds of cards you will meet. Getting your own study content is the next step: open the Sources tab and tap Sync to download the official lessons — the official source is already set up for you. You can also add other lesson sources by URL there, or import a lesson file from Settings. When you are ready, dismiss this tutorial with the “Dismiss tutorial” button above.",
   "tags": [
     "tutorial"
   ],
@@ -37,7 +37,7 @@
       "cardId": "tut-ft-01",
       "type": "free-text",
       "question": "This is a free-text card — there is no automatic grading, so you reveal the explanation and rate yourself honestly. In your own words: why is rating a card “Again” useful even though it means you will see the card again very soon?",
-      "explanation": "Rating a card “Again” tells Reprise you didn't recall it, so it brings the card back within a minute and shortens its future intervals until the memory sticks. Honest self-rating is what makes spaced repetition work — there is no grade to protect, only your future memory. That's the whole loop: answer, rate, repeat. You're ready to study for real."
+      "explanation": "Rating a card “Again” tells Reprise you didn't recall it, so it brings the card back within a minute and shortens its future intervals until the memory sticks. Honest self-rating is what makes spaced repetition work — there is no grade to protect, only your future memory. That's the whole loop: answer, rate, repeat. To get real lessons to study, open the Sources tab and tap Sync — the official source is already set up, so you'll have content in seconds."
     }
   ]
 }
